@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/*
+ * QBIT9 design tokens, taken from the approved mobile mockups (qbit9-mobile-flow.html).
+ * Utilities are generated from these names: bg-surface, text-ink, bg-rose, border-line, rounded-card ...
+ * Do not use raw hex values in components. Add a token here instead.
+ */
+@theme {
+  --color-canvas: #f1e4e0;
+  --color-bg: #f8f1ec;
+  --color-surface: #fdf9f6;
+  --color-ink: #2b1a20;
+  --color-muted: #7a6a70;
+  --color-primary: #ad4a63;
+  --color-primary-strong: #9a4059;
+  --color-on-primary: #fff3ef;
+  --color-rose: #f4c8ce;
+  --color-lavender: #e3dfff;
+  --color-peach: #fadcc8;
+  --color-pink: #f0c6d2;
+  --color-mustard: #e2c37f;
+  --color-coral: #ee7b4f;
+  --color-rust: #8a3347;
+  --color-deep: #5a2234;
+  --color-ok: #3f8a4b;
+  --color-white: #ffffff;
+  --color-line: rgb(43 26 32 / 0.3);
+  --color-line-soft: rgb(43 26 32 / 0.12);
+
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-dm), ui-monospace, monospace;
+
+  --radius-chip: 10px;
+  --radius-field: 12px;
+  --radius-btn: 16px;
+  --radius-card: 24px;
+  --radius-sheet: 28px;
+
+  --shadow-card: 0 1px 2px rgb(43 26 32 / 0.05), 0 10px 20px -12px rgb(43 26 32 / 0.22);
+  --shadow-sheet: 0 -10px 30px -10px rgb(43 26 32 / 0.35);
+  --shadow-pop: 0 22px 40px -12px rgb(43 26 32 / 0.55);
+  --shadow-ibn: 0 1px 3px rgb(43 26 32 / 0.14);
+
+  --animate-sheet-in: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-pop-in: pop-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pulse-ring: pulse-ring 2s ease-out infinite;
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+
+  @keyframes sheet-in {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pop-in {
+    from { transform: scale(0.96); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(63 138 75 / 0.35); }
+    100% { box-shadow: 0 0 0 10px rgb(63 138 75 / 0); }
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+}
+
+:root {
+  color-scheme: light;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html {
+  background: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: var(--safe-top);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: not-allowed; }
+
+:focus-visible {
+  outline: 2px solid var(--color-primary-strong);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection { background: var(--color-rose); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hide scrollbars where a horizontal strip would look noisy. */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
