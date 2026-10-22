@@ -7,6 +7,8 @@ import {
   addDaysKey, nthWeekdayOfMonth, tzParts, weekdayOfKey, estimateWait,
   type Bank, type Branch, type DayHours, type EpochMs, type ID, type Service, type ServiceGroup, type ServiceGroupLive,
 } from "@/domain";
+import { waitingInGroup } from "./staff/live";
+import { counterNumbersOnBreak } from "./staff/store";
 
 export const BANKS: Bank[] = [
   { id: "bank_sbi", slug: "sbi", name: "State Bank of India", shortName: "SBI" },
@@ -117,8 +119,6 @@ export function getBranches(now: EpochMs): Branch[] {
   return branches;
 }
 
-export const ALL_SERVICES: Service[] = GROUPS.flatMap((g) => g.services);
-
 export function findService(serviceId: ID): { group: ServiceGroup; service: Service } | null {
   for (const group of GROUPS) {
     const service = group.services.find((s) => s.id === serviceId);
@@ -128,7 +128,9 @@ export function findService(serviceId: ID): { group: ServiceGroup; service: Serv
 }
 
 export function countersFor(branch: Branch, groupId: ID): number[] {
-  return branch.counters.filter((c) => c.groupIds.includes(groupId)).map((c) => c.number).sort((a, b) => a - b);
+  // Counters whose staff are on a break do not count while they are away (see staff/store.ts).
+  const away = counterNumbersOnBreak(branch.id);
+  return branch.counters.filter((c) => c.groupIds.includes(groupId) && !away.includes(c.number)).map((c) => c.number).sort((a, b) => a - b);
 }
 
 function hash(str: string): number {
@@ -150,13 +152,24 @@ export function ambientWaiting(branchId: ID, serviceId: ID, now: EpochMs, closed
   return Math.max(0, Math.round(load) + wobble);
 }
 
+/**
+ * People waiting for a service. While staff have a counter open this is the real queue of the
+ * service's group, otherwise the ambient simulation above.
+ */
+export function waitingFor(branch: Branch, serviceId: ID, now: EpochMs, closed = false): number {
+  if (closed) return 0;
+  const group = findService(serviceId)?.group;
+  const real = group ? waitingInGroup(branch, group.id, now) : null;
+  return real ?? ambientWaiting(branch.id, serviceId, now);
+}
+
 export function liveCatalogue(branch: Branch, now: EpochMs, closed: boolean): ServiceGroupLive[] {
   return GROUPS.map((g) => {
     const counters = Math.max(1, countersFor(branch, g.id).length);
     return {
       ...g,
       services: g.services.map((s) => {
-        const waiting = ambientWaiting(branch.id, s.id, now, closed);
+        const waiting = waitingFor(branch, s.id, now, closed);
         return { ...s, waiting, usualWait: estimateWait(waiting, s.avgServiceMin, counters) };
       }),
     };

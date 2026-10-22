@@ -1,6 +1,6 @@
 "use client";
 import { useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, Icon, Segmented, Sheet, Switch, useToast } from "@/components/ui";
@@ -27,7 +27,9 @@ export function DevPanel() {
   const { dev } = useServices();
   const [open, setOpen] = useState(false);
   const mounted = useIsClient();
-  if (!dev || !mounted) return null;
+  const pathname = usePathname();
+  // The staff app has its own demo controls.
+  if (!dev || !mounted || pathname.startsWith("/staff")) return null;
   return (
     <>
       <button

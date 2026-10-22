@@ -1,5 +1,5 @@
 import { DEFAULT_POLICY, type Policy } from "./policy";
-import { addDaysKey, hoursForDate, slotLabel, tzParts, weekdayLong, weekdayShort } from "./time";
+import { addDaysKey, hoursForDate, slotLabel, tzParts, weekdayShort } from "./time";
 import type { Branch, DayAvailability, EpochMs, Slot, SlotStatus } from "./types";
 
 export interface AvailabilityInput {
@@ -45,10 +45,6 @@ export function buildAvailability(input: AvailabilityInput): DayAvailability[] {
     });
   }
   return days;
-}
-
-export function weekdayName(dateKey: string, tz: string): string {
-  return weekdayLong(tzParts(Date.parse(`${dateKey}T06:30:00Z`), tz).weekday);
 }
 
 /** Lifecycle windows for a booking, shared by the UI (buttons) and the services (enforcement). */

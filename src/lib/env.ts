@@ -10,6 +10,11 @@ export const env = {
   adapter: ((process.env.NEXT_PUBLIC_QBIT9_ADAPTER as AdapterName | undefined) ?? "mock") as AdapterName,
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   devtools: bool(process.env.NEXT_PUBLIC_ENABLE_DEVTOOLS, process.env.NODE_ENV !== "production"),
+  /**
+   * Serves the staff console under /staff. Turn off to ship a customer-only site, or to host the
+   * staff app on its own deployment later. Staff routes return 404 when false.
+   */
+  staffApp: bool(process.env.NEXT_PUBLIC_ENABLE_STAFF, true),
   /** SMS delivery is outside the free MVP. When false the UI offers browser alerts and email only. */
   featureSms: bool(process.env.NEXT_PUBLIC_FEATURE_SMS, false),
   /**

@@ -36,8 +36,6 @@ function load(): JoinDraft {
   return cache;
 }
 
-export const getDraft = load;
-
 export function setDraft(patch: Partial<JoinDraft>): void {
   cache = { ...load(), ...patch };
   session.write(KEY, cache);

@@ -4,12 +4,13 @@
  * tokens through their stages. Delete this folder's logic when `services/supabase` lands.
  */
 import {
-  DEFAULT_POLICY, deriveView, estimateWait, isActiveStage, reconcile, stageOf, tzParts,
+  DEFAULT_POLICY, deriveView, estimateWait, reconcile, tzParts,
   type Branch, type EpochMs, type ID, type TokenRecord, type TokenView,
 } from "@/domain";
 import type { QueueContext } from "@/domain";
 import { clock } from "@/lib/clock";
-import { ambientWaiting, countersFor, findService, getBranches } from "./catalogue";
+import { countersFor, findService, getBranches, waitingFor } from "./catalogue";
+import { liveQueueFor } from "./staff/live";
 import { loadDev, type MockDb, type MockTokenRow } from "./db";
 import type { DevSettings } from "../types";
 
@@ -23,7 +24,11 @@ export function paceFor(speed: DevSettings["speed"], avgServiceMin: number, coun
 }
 
 export function ctxFor(row: MockTokenRow): QueueContext {
+  const now = clock.now();
+  const branch = branchById(row.branchId, now);
   return {
+    // Present only while staff have a counter open here. See staff/live.ts.
+    live: branch ? liveQueueFor(branch, now) : undefined,
     policy: DEFAULT_POLICY,
     timing: { stepMs: row.stepMs, arriveMs: row.arriveMs, serviceMs: row.serviceMs },
     counterFor: (r: TokenRecord) => {
@@ -65,16 +70,12 @@ export function userRows(db: MockDb, userId: ID): MockTokenRow[] {
   return Object.values(db.tokens).filter((r) => r.userId === userId);
 }
 
-export function isRowActive(row: MockTokenRow, now: EpochMs): boolean {
-  return isActiveStage(stageOf(row, ctxFor(row), now));
-}
-
 export function viewOf(row: MockTokenRow, now: EpochMs): TokenView {
   const branch = branchById(row.branchId, now) as Branch;
   const found = findService(row.serviceId);
   const counters = Math.max(1, countersFor(branch, row.groupId).length);
   const avg = found?.service.avgServiceMin ?? 6;
-  const usualWait = estimateWait(ambientWaiting(row.branchId, row.serviceId, now), avg, counters);
+  const usualWait = estimateWait(waitingFor(branch, row.serviceId, now), avg, counters);
   return deriveView(row, ctxFor(row), now, {
     branchName: branch.name,
     branchSlug: branch.slug,

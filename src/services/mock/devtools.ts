@@ -5,6 +5,7 @@ import { ctxFor, syncUserTokens, userRows } from "./engine";
 import { loadDev, mutate, onDevChange, resetDb, saveDev, type MockTokenRow } from "./db";
 import type { DevApi, DevSettings } from "../types";
 import { findService } from "./catalogue";
+import { STAFF_SERVICE_MS } from "./staff/live";
 import { paceFor } from "./engine";
 import { countersFor } from "./catalogue";
 import { branchById } from "./engine";
@@ -58,6 +59,11 @@ export function createDevApi(): DevApi {
     async skipToNearby(id) {
       withRow(id, (row, now) => {
         const ctx = ctxFor(row);
+        // Staff are working the real queue, so the line cannot be skipped. Just open the prompt.
+        if (ctx.live) {
+          if (row.checkinConfirmedAt == null && row.checkinPromptedAt == null) return { ...row, checkinPromptedAt: now };
+          return;
+        }
         const base = row.aheadAtJoin + row.delayPositions;
         if (base <= DEFAULT_POLICY.nearThreshold) return;
         const next: MockTokenRow = { ...row, joinedAt: now - row.stepMs * (base - DEFAULT_POLICY.nearThreshold), checkinPromptedAt: null };
@@ -68,6 +74,12 @@ export function createDevApi(): DevApi {
 
     async callNow(id) {
       withRow(id, (row, now) => {
+        const ctx = ctxFor(row);
+        // Staff are working the real queue: act like a counter calling this token right now.
+        if (ctx.live) {
+          if (row.calledAt != null) return;
+          return { ...row, checkinConfirmedAt: row.checkinConfirmedAt ?? now, calledAt: now, counter: ctx.counterFor(row), serviceMs: STAFF_SERVICE_MS };
+        }
         const base = row.aheadAtJoin + row.delayPositions;
         const next = { ...row, joinedAt: now - row.stepMs * base, checkinConfirmedAt: row.checkinConfirmedAt ?? now };
         return { ...next, ...reconcile(next, ctxFor(next), now).record };

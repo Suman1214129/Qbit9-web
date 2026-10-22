@@ -19,8 +19,6 @@ const read = (): PendingSignIn | null => {
   return cache;
 };
 
-export const getPendingSignIn = read;
-
 export function setPendingSignIn(v: PendingSignIn | null): void {
   cache = v;
   if (v) session.write(KEY, v);

@@ -26,6 +26,15 @@ export function readJson<T>(key: string, fallback: T): T {
   }
 }
 
+/** The stored string as is, for cheap "did anything change" checks. */
+export function readRaw(key: string): string | null {
+  try {
+    return ls()?.getItem(key) ?? memory.get(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function writeJson<T>(key: string, value: T): void {
   const raw = JSON.stringify(value);
   try {

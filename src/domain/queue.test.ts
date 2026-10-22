@@ -278,3 +278,85 @@ describe("deriveView", () => {
     expect(deriveView(ext, ctx, at(1), info).canRequestMoreTime).toBe(false);
   });
 });
+
+describe("live queue (staff call people, the clock does not)", () => {
+  const MIN_MS = 60_000;
+  const withAhead = (n: { v: number }, serving: string | null = null) => ({
+    ...ctx,
+    live: { ahead: () => n.v, nowServing: () => serving },
+  });
+
+  it("never calls a token by itself, however long it waits", () => {
+    const n = { v: 0 };
+    const t = makeToken({ aheadAtJoin: 0, checkinConfirmedAt: T0 });
+    const { record, events } = reconcile(t, withAhead(n), at(240));
+    expect(record.calledAt).toBeNull();
+    expect(events).toEqual([]);
+  });
+  it("reports the real people ahead, not the timer", () => {
+    const n = { v: 6 };
+    const c = withAhead(n);
+    const t = makeToken({ aheadAtJoin: 8 });
+    expect(deriveView(t, c, at(30), info).ahead).toBe(6);
+    n.v = 2;
+    expect(deriveView(t, c, at(30), info).ahead).toBe(2);
+  });
+  it("opens the check-in prompt once the real queue gets within three, and only then", () => {
+    const n = { v: 7 };
+    const c = withAhead(n);
+    const far = reconcile(makeToken({ aheadAtJoin: 8 }), c, at(10));
+    expect(stageOf(far.record, c, at(10))).toBe("waiting");
+    n.v = 3;
+    const near = reconcile(far.record, c, at(11));
+    expect(stageOf(near.record, c, at(11))).toBe("checkin");
+    expect(near.events.map((e) => e.type)).toEqual(["nearby"]);
+    expect(reconcile(near.record, c, at(11) + 1000).events).toEqual([]);
+  });
+  it("a missed check-in sets the token back and prompts again only when near", () => {
+    const n = { v: 3 };
+    const c = withAhead(n);
+    const r1 = reconcile(makeToken({ aheadAtJoin: 8 }), c, at(1)).record;
+    const lapsed = reconcile(r1, c, at(1) + ctx.policy.checkinWindowMs + 1000);
+    expect(lapsed.events.map((e) => e.type)).toContain("checkin_lapsed");
+    expect(lapsed.record.delayPositions).toBe(ctx.policy.setback);
+    expect(lapsed.record.checkinPromptedAt).toBeNull();
+    n.v = 3 + ctx.policy.setback; // the real queue now has them further back
+    const later = reconcile(lapsed.record, c, at(10));
+    expect(stageOf(later.record, c, at(10))).toBe("waiting");
+  });
+  it("misses the token after too many lapses", () => {
+    const n = { v: 1 };
+    const c = withAhead(n);
+    let r = makeToken({ aheadAtJoin: 8 });
+    let t = at(1);
+    for (let i = 0; i <= ctx.policy.maxLapses + 1 && r.missedAt == null; i++) {
+      r = reconcile(r, c, t).record;
+      t += ctx.policy.checkinWindowMs + 1000;
+      r = reconcile(r, c, t).record;
+      t += MIN_MS;
+    }
+    expect(r.missedAt).not.toBeNull();
+  });
+  it("move back reopens the prompt on its own when near again", () => {
+    const n = { v: 2 };
+    const c = withAhead(n);
+    const r1 = reconcile(makeToken({ aheadAtJoin: 8 }), c, at(2)).record;
+    const moved = moveBack(r1, c, at(2) + 5000).record;
+    expect(moved.checkinPromptedAt).toBeNull();
+    expect(stageOf(moved, c, at(3))).toBe("waiting");
+    expect(stageOf(reconcile(moved, c, at(3)).record, c, at(3))).toBe("checkin");
+  });
+  it("shows who is being served from the real queue", () => {
+    const n = { v: 5 };
+    const c = withAhead(n, "C-044");
+    expect(deriveView(makeToken(), c, at(1), info).nowServingCode).toBe("C-044");
+  });
+  it("still runs the called window in real time", () => {
+    const n = { v: 0 };
+    const c = withAhead(n);
+    const called = makeToken({ checkinConfirmedAt: T0, calledAt: at(10), counter: 4 });
+    expect(stageOf(reconcile(called, c, at(10) + 1000).record, c, at(10) + 1000)).toBe("called");
+    const gone = reconcile(called, c, at(10) + ctx.policy.calledWindowMs + 1000);
+    expect(gone.record.missedAt).not.toBeNull();
+  });
+});

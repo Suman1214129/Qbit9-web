@@ -36,6 +36,21 @@ export interface QueueContext {
   timing: QueueTiming;
   /** Which counter a token will be sent to. Deterministic so the map and the call agree. */
   counterFor: (record: TokenRecord) => number | null;
+  /**
+   * Facts the backend knows about the real queue. When present, the line moves because staff call
+   * people, not because the clock runs: `reconcile` never calls anyone, and "ahead" is whatever
+   * `live.ahead` says right now. A real backend always provides this. The mock provides it only
+   * while a staff counter is open at the branch, and otherwise falls back to the `timing`
+   * simulation so the customer demo works on its own.
+   */
+  live?: LiveQueue;
+}
+
+export interface LiveQueue {
+  /** People in the same service queue who will be called before this token. */
+  ahead: (record: TokenRecord) => number;
+  /** Code of the token most recently called in this token's service queue, if any. */
+  nowServing: (record: TokenRecord) => string | null;
 }
 
 export interface ReconcileResult {
@@ -65,6 +80,12 @@ export function aheadAt(r: TokenRecord, timing: QueueTiming, t: EpochMs): number
   return Math.max(0, baseAhead(r) - cleared);
 }
 
+/** People ahead right now: the real queue when the backend provides it, the simulation otherwise. */
+export function aheadFor(r: TokenRecord, ctx: QueueContext, t: EpochMs): number {
+  if (r.calledAt != null || isTerminal(r)) return 0;
+  return ctx.live ? Math.max(0, ctx.live.ahead(r)) : aheadAt(r, ctx.timing, t);
+}
+
 export function callDeadline(r: TokenRecord, policy: Policy): EpochMs | null {
   return r.calledAt == null ? null : r.calledAt + policy.calledWindowMs + r.extraTimeMs;
 }
@@ -89,38 +110,8 @@ export function reconcile(input: TokenRecord, ctx: QueueContext, now: EpochMs): 
     if (r.checkinConfirmedAt == null && r.lapseCount === 0 && r.delayPositions === 0 && baseAhead(r) <= policy.nearThreshold) {
       r.checkinConfirmedAt = r.joinedAt;
     }
-
-    for (let guard = 0; guard < 32; guard++) {
-      const zeroAt = turnArrivesAt(r, timing);
-
-      if (r.checkinConfirmedAt != null) {
-        if (now < zeroAt) break;
-        r.calledAt = zeroAt;
-        r.counter = ctx.counterFor(r);
-        emit({ type: "called", at: zeroAt, counter: r.counter });
-        break;
-      }
-
-      const promptAt = r.checkinPromptedAt ?? nearArrivesAt(r, ctx);
-      r.checkinPromptedAt = promptAt;
-      if (now < promptAt) break;
-      emit({ type: "nearby", at: promptAt });
-
-      // The prompt ends when time runs out, or when the turn arrives, whichever is first: the
-      // counter cannot call someone who has not said they are still here.
-      const lapseAt = Math.min(promptAt + policy.checkinWindowMs, zeroAt);
-      if (now < lapseAt) break;
-
-      r.lapseCount += 1;
-      emit({ type: "checkin_lapsed", at: lapseAt });
-      if (r.lapseCount > policy.maxLapses) {
-        r.missedAt = lapseAt;
-        emit({ type: "missed", at: lapseAt });
-        break;
-      }
-      r.delayPositions += policy.setback;
-      r.checkinPromptedAt = Math.max(nearArrivesAt(r, ctx), lapseAt);
-    }
+    if (ctx.live) reconcileLive(r, ctx, now, emit);
+    else reconcileTimed(r, ctx, now, emit);
   }
 
   if (!isTerminal(r) && r.calledAt != null) {
@@ -148,6 +139,70 @@ export function reconcile(input: TokenRecord, ctx: QueueContext, now: EpochMs): 
 
   r.reconciledAt = now;
   return { record: r, events };
+}
+
+type Emit = (e: TokenEvent) => void;
+
+/** Simulation: the line moves one position every `stepMs`, and the token is called when it clears. */
+function reconcileTimed(r: TokenRecord, ctx: QueueContext, now: EpochMs, emit: Emit): void {
+  const { policy, timing } = ctx;
+  for (let guard = 0; guard < 32; guard++) {
+    const zeroAt = turnArrivesAt(r, timing);
+
+    if (r.checkinConfirmedAt != null) {
+      if (now < zeroAt) break;
+      r.calledAt = zeroAt;
+      r.counter = ctx.counterFor(r);
+      emit({ type: "called", at: zeroAt, counter: r.counter });
+      break;
+    }
+
+    const promptAt = r.checkinPromptedAt ?? nearArrivesAt(r, ctx);
+    r.checkinPromptedAt = promptAt;
+    if (now < promptAt) break;
+    emit({ type: "nearby", at: promptAt });
+
+    // The prompt ends when time runs out, or when the turn arrives, whichever is first: the
+    // counter cannot call someone who has not said they are still here.
+    const lapseAt = Math.min(promptAt + policy.checkinWindowMs, zeroAt);
+    if (now < lapseAt) break;
+
+    r.lapseCount += 1;
+    emit({ type: "checkin_lapsed", at: lapseAt });
+    if (r.lapseCount > policy.maxLapses) {
+      r.missedAt = lapseAt;
+      emit({ type: "missed", at: lapseAt });
+      break;
+    }
+    r.delayPositions += policy.setback;
+    r.checkinPromptedAt = Math.max(nearArrivesAt(r, ctx), lapseAt);
+  }
+}
+
+/**
+ * Real queue: staff call people, so this only runs the check-in prompt. It opens once the token is
+ * within `nearThreshold` of the front and closes after `checkinWindowMs`. A missed check-in sets the
+ * token back `setback` places, and the prompt reopens when it is near the front again.
+ */
+function reconcileLive(r: TokenRecord, ctx: QueueContext, now: EpochMs, emit: Emit): void {
+  const { policy, live } = ctx;
+  if (r.checkinConfirmedAt != null || !live) return;
+  if (r.checkinPromptedAt == null) {
+    if (live.ahead(r) > policy.nearThreshold) return;
+    r.checkinPromptedAt = now;
+  }
+  emit({ type: "nearby", at: r.checkinPromptedAt });
+  const lapseAt = r.checkinPromptedAt + policy.checkinWindowMs;
+  if (now < lapseAt) return;
+  r.lapseCount += 1;
+  emit({ type: "checkin_lapsed", at: lapseAt });
+  if (r.lapseCount > policy.maxLapses) {
+    r.missedAt = lapseAt;
+    emit({ type: "missed", at: lapseAt });
+    return;
+  }
+  r.delayPositions += policy.setback;
+  r.checkinPromptedAt = null; // reopens by itself once the token is near the front again
 }
 
 /* ------------------------------------------------------------------------ stage */
@@ -191,7 +246,8 @@ export function moveBack(r0: TokenRecord, ctx: QueueContext, now: EpochMs): Reco
     checkinConfirmedAt: null,
     checkinPromptedAt: null,
   };
-  r.checkinPromptedAt = Math.max(nearArrivesAt(r, ctx), now);
+  // Live: the prompt reopens by itself once the token is near the front again.
+  r.checkinPromptedAt = ctx.live ? null : Math.max(nearArrivesAt(r, ctx), now);
   return { record: r, events: res.events };
 }
 
@@ -223,14 +279,14 @@ export function leaveQueue(r0: TokenRecord, ctx: QueueContext, now: EpochMs): Re
   return { record: { ...res.record, leftAt: now }, events: res.events };
 }
 
-/** Mock staff: start serving now (the counter scanned or called the customer in). */
+/** Staff: start serving now (the customer reached the counter). */
 export function startServing(r0: TokenRecord, ctx: QueueContext, now: EpochMs): ReconcileResult {
   const res = fresh(r0, ctx, now);
   if (stageOf(res.record, ctx, now) !== "called") throw new DomainError("invalid_state", "Not at a counter yet");
   return { record: { ...res.record, onMyWayAt: res.record.onMyWayAt ?? now, servingStartedAt: now }, events: [...res.events, { type: "serving", at: now }] };
 }
 
-/** Mock staff: close the visit now. */
+/** Staff: close the visit now. */
 export function finishServing(r0: TokenRecord, ctx: QueueContext, now: EpochMs): ReconcileResult {
   const res = fresh(r0, ctx, now);
   const stage = stageOf(res.record, ctx, now);
@@ -260,12 +316,19 @@ export interface ViewInfo {
 /** Everything a screen needs about a token. Call on a reconciled record. */
 export function deriveView(r: TokenRecord, ctx: QueueContext, now: EpochMs, info: ViewInfo): TokenView {
   const stage = stageOf(r, ctx, now);
-  const ahead = aheadAt(r, ctx.timing, now);
+  const ahead = aheadFor(r, ctx, now);
   const [prefix = ""] = r.code.split("-");
   const waiting = stage === "waiting" || stage === "checkin";
 
   const nowServingNumber = waiting && ahead > 0 ? Math.max(1, r.number - Math.max(0, ahead - r.delayPositions)) : r.number;
-  const nowServingCode = waiting && ahead > 0 ? `${prefix}-${String(nowServingNumber).padStart(3, "0")}` : stage === "called" || stage === "serving" ? r.code : null;
+  const nowServingCode =
+    stage === "called" || stage === "serving"
+      ? r.code
+      : waiting && ctx.live
+        ? ctx.live.nowServing(r)
+        : waiting && ahead > 0
+          ? `${prefix}-${String(nowServingNumber).padStart(3, "0")}`
+          : null;
 
   const predictedCounter = ahead <= ctx.policy.nearThreshold ? ctx.counterFor(r) : null;
   const counter = r.counter ?? (waiting ? predictedCounter : null);
@@ -274,9 +337,9 @@ export function deriveView(r: TokenRecord, ctx: QueueContext, now: EpochMs, info
   const savedPositions = Math.max(0, r.aheadAtJoin - ctx.policy.nearThreshold);
   const savedMs = r.calledAt != null ? Math.round(waitMid(estimateWait(savedPositions, info.avgServiceMin, info.counters)) * 60_000) : null;
 
-  const zeroAt = turnArrivesAt(r, ctx.timing);
+  const promptEnds = r.checkinPromptedAt != null ? r.checkinPromptedAt + ctx.policy.checkinWindowMs : null;
   const checkinDeadline =
-    stage === "checkin" && r.checkinPromptedAt != null ? Math.min(r.checkinPromptedAt + ctx.policy.checkinWindowMs, zeroAt) : null;
+    stage === "checkin" && promptEnds != null ? (ctx.live ? promptEnds : Math.min(promptEnds, turnArrivesAt(r, ctx.timing))) : null;
 
   return {
     id: r.id,

@@ -6,6 +6,7 @@ import { createDevApi } from "./devtools";
 import { createHistoryService } from "./history";
 import { createPreferencesService } from "./preferences";
 import { createQueueService } from "./queue";
+import { createStaffDevApi, createStaffService } from "./staff/service";
 
 export function createMockServices(opts: { devtools: boolean }): Services {
   return {
@@ -16,5 +17,7 @@ export function createMockServices(opts: { devtools: boolean }): Services {
     history: createHistoryService(),
     preferences: createPreferencesService(),
     dev: opts.devtools ? createDevApi() : undefined,
+    staff: createStaffService(),
+    staffDev: opts.devtools ? createStaffDevApi() : undefined,
   };
 }

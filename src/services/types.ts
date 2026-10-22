@@ -15,6 +15,7 @@ import type {
   Booking, BookingView, Branch, BranchSnapshot, DayAvailability, EpochMs, HistoryItem, HistoryStats, ID,
   LocationProof, OtpChannel, Preferences, PriorityTag, ServiceGroupLive, Session, TokenFeedback, TokenView, User,
 } from "@/domain";
+import type { StaffDevApi, StaffService } from "./staff-types";
 
 export type Unsubscribe = () => void;
 
@@ -181,6 +182,9 @@ export interface Services {
   history: HistoryService;
   preferences: PreferencesService;
   dev?: DevApi;
+  /** Staff app (counter, queue, walk-ins). See staff-types.ts. */
+  staff: StaffService;
+  staffDev?: StaffDevApi;
 }
 
 export type { Booking };

@@ -1,17 +1,17 @@
 import {
-  DEFAULT_POLICY, DomainError, aheadForNewToken, assertWithinBranch, confirmCheckin, canCheckInBooking, formatTokenCode,
+  DEFAULT_POLICY, DomainError, aheadFor, aheadForNewToken, assertWithinBranch, confirmCheckin, canCheckInBooking, formatTokenCode,
   isActiveStage, leaveQueue, markOnMyWay, moveBack, reconcile, requestMoreTime, stageOf,
   type Branch, type LocationProof, type TokenRecord, type TokenView, type EpochMs, type PriorityTag, type Service, type ServiceGroup, type TokenSource,
 } from "@/domain";
 import { clock } from "@/lib/clock";
-import { hash, ambientWaiting, findService } from "./catalogue";
+import { hash, findService, waitingFor } from "./catalogue";
 import { currentUser } from "./auth";
 import { branchById, ctxFor, dateKeyFor, devSettings, paceFor, syncRow, syncUserTokens, userRows, viewOf } from "./engine";
 import { isBranchOpen } from "./branches";
 import { loadDb, mutate, onDbChange, uid, type MockDb, type MockTokenRow } from "./db";
 import type { QueueService, TokenRef } from "../types";
 
-function nextNumber(db: MockDb, branch: Branch, groupId: string, now: EpochMs): number {
+export function nextNumber(db: MockDb, branch: Branch, groupId: string, now: EpochMs): number {
   const key = `${branch.id}|${groupId}|${dateKeyFor(branch, now)}`;
   const last = db.numbers[key] ?? 40 + (hash(key) % 25);
   db.numbers[key] = last + 1;
@@ -30,7 +30,7 @@ interface NewToken {
 
 function issueToken(db: MockDb, n: NewToken, now: EpochMs): MockTokenRow {
   const counters = Math.max(1, n.branch.counters.filter((c) => c.groupIds.includes(n.group.id)).length);
-  const waiting = ambientWaiting(n.branch.id, n.service.id, now);
+  const waiting = waitingFor(n.branch, n.service.id, now);
   const ahead = aheadForNewToken(waiting, { priority: n.priority, source: n.source });
   const number = nextNumber(db, n.branch, n.group.id, now);
   const row: MockTokenRow = {
@@ -215,7 +215,10 @@ export function createQueueService(): QueueService {
         if (changed) mutate((fresh) => syncUserTokens(fresh, s.userId, now));
         const sig = userRows(loadDb(), s.userId)
           .filter((r) => isActiveStage(stageOf(r, ctxFor(r), now)))
-          .map((r) => `${r.id}:${stageOf(r, ctxFor(r), now)}:${Math.max(0, r.aheadAtJoin + r.delayPositions - Math.floor((now - r.joinedAt) / r.stepMs))}:${r.delayPositions}:${r.extraTimeMs}:${r.onMyWayAt ?? 0}`)
+          .map((r) => {
+            const ctx = ctxFor(r);
+            return `${r.id}:${stageOf(r, ctx, now)}:${aheadFor(r, ctx, now)}:${r.delayPositions}:${r.extraTimeMs}:${r.onMyWayAt ?? 0}`;
+          })
           .join("|");
         if (sig !== last) {
           last = sig;

@@ -30,8 +30,6 @@ export const nameSchema = z
   .max(40, { message: "Keep it under 40 characters" })
   .regex(/^[\p{L}\p{M}][\p{L}\p{M} .'-]*$/u, { message: "Use letters only" });
 
-export const prioritySchema = z.array(z.enum(PRIORITY_TAGS));
-
 /** Drops anything that is not a known tag and removes duplicates. */
 export function validatePrioritySafe(input: readonly string[]): (typeof PRIORITY_TAGS)[number][] {
   const out: (typeof PRIORITY_TAGS)[number][] = [];

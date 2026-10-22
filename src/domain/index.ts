@@ -9,3 +9,4 @@ export * from "./queue";
 export * from "./slots";
 export * from "./history";
 export * from "./validation";
+export * from "./staff";

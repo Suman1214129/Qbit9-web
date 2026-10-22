@@ -2,7 +2,7 @@
   "name": "qbit9-web",
   "version": "0.1.0",
   "private": true,
-  "description": "QBIT9 customer web app: smart queue and appointments for bank branches.",
+  "description": "QBIT9 web app: smart queue and appointments for bank branches (customer app and staff console).",
   "engines": {
     "node": ">=20.9"
   },

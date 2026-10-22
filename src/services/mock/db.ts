@@ -45,12 +45,16 @@ export function saveDb(db: MockDb): void {
 /** Read, change, write. The mock is synchronous underneath, so there are no races inside one tab. */
 export function mutate<T>(fn: (db: MockDb) => T): T {
   const db = loadDb();
+  const before = JSON.stringify(db);
   try {
     return fn(db);
   } finally {
     // Saved even when `fn` throws so counters like OTP attempts persist. Services validate first
     // and only mutate once a request is known to be good.
-    saveDb(db);
+    // Unchanged data is not written: a write fires the change event, which refetches, which reads
+    // again. That loop rewrote the whole store every few ms and, with the staff app open in a
+    // second tab, let a stale customer write overwrite a staff call.
+    if (JSON.stringify(db) !== before) saveDb(db);
   }
 }
 

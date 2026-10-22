@@ -25,6 +25,8 @@ export function AlertsWatcher() {
   const firstName = session?.user.name?.split(" ")[0] ?? null;
 
   const deliver = useEffectEvent((m: AlertMessage) => {
+    // Staff screens are not the customer's. Their own token alerts belong on the customer pages.
+    if (pathname.startsWith("/staff")) return;
     const visible = document.visibilityState === "visible";
     if (m.vibrate) buzz(m.tag.endsWith("called") ? [200, 100, 200, 100, 400] : [200, 100, 200]);
     if (visible) {

@@ -56,8 +56,3 @@ export function formatUpdated(from: number, now: number): string {
 export function pluralize(n: number, one: string, many = `${one}s`): string {
   return n === 1 ? one : many;
 }
-
-/** Indian digit grouping for rupees: 50000 -> "₹50,000". */
-export function formatRupees(n: number): string {
-  return `₹${new Intl.NumberFormat("en-IN").format(n)}`;
-}
