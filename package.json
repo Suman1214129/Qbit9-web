@@ -19,6 +19,7 @@
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
     "@tanstack/react-query": "^5.104.3",
     "clsx": "^2.1.1",
     "next": "^16.4.1",

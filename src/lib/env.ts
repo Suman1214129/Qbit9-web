@@ -24,6 +24,11 @@ export const env = {
   get backgroundAlerts(): boolean {
     return (process.env.NEXT_PUBLIC_QBIT9_ADAPTER ?? "mock") !== "mock";
   },
+  /** Supabase client config for real backend adapter. */
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+  sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
   /** Mock only: treat every branch as open so the flow can be demoed outside banking hours. */
   mockAlwaysOpen: bool(process.env.NEXT_PUBLIC_MOCK_ALWAYS_OPEN, true),
   /** Mock only: seed a few past visits so History and stats have something to show. */
