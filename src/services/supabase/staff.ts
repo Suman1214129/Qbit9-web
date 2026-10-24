@@ -79,6 +79,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
   const buildCounterState = async (session: StaffSessionStorage): Promise<CounterState> => {
     const now = clock.now();
     const branch = await getBranch(session.staff.branchId);
+    const todayIso = new Date(now).toISOString().split("T")[0];
 
     const counterNumber = session.counter ?? 1;
     const counterOption: CounterOption = {
@@ -89,15 +90,40 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       onBreak: session.shiftStatus === "break",
     };
 
+    let served = 0;
+    let waitingMine = 0;
+    try {
+      const { count: sCount } = await sb
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("branch_id", session.staff.branchId)
+        .eq("counter", counterNumber)
+        .not("served_at", "is", null)
+        .gte("created_at", `${todayIso}T00:00:00Z`);
+      served = sCount ?? 0;
+
+      const { count: wCount } = await sb
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("branch_id", session.staff.branchId)
+        .is("served_at", null)
+        .is("missed_at", null)
+        .is("left_at", null)
+        .gte("created_at", `${todayIso}T00:00:00Z`);
+      waitingMine = wCount ?? 0;
+    } catch {
+      // default 0
+    }
+
     return {
       staff: session.staff,
       branch,
       counter: counterOption,
       shift: toShiftState(session, now),
       now,
-      waitingMine: 2,
-      served: 5,
-      avgServiceMs: 6 * 60_000,
+      waitingMine,
+      served,
+      avgServiceMs: null,
       current: null,
       held: [],
       next: [],
@@ -169,6 +195,29 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       const session = requireStaffSession();
       const branch = await getBranch(session.staff.branchId);
       const now = clock.now();
+      const todayIso = new Date(now).toISOString().split("T")[0] ?? "";
+
+      let waiting = 0;
+      let countersTotal = 4;
+      try {
+        const { count: wCount } = await sb
+          .from("tokens")
+          .select("*", { count: "exact", head: true })
+          .eq("branch_id", session.staff.branchId)
+          .is("served_at", null)
+          .is("missed_at", null)
+          .is("left_at", null)
+          .gte("created_at", `${todayIso}T00:00:00Z`);
+        waiting = wCount ?? 0;
+
+        const { count: cCount } = await sb
+          .from("counters")
+          .select("*", { count: "exact", head: true })
+          .eq("branch_id", session.staff.branchId);
+        if (cCount) countersTotal = cCount;
+      } catch {
+        // default 0
+      }
 
       const assigned: CounterOption = {
         number: session.counter ?? 1,
@@ -181,15 +230,15 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       return {
         staff: session.staff,
         branch,
-        dateKey: new Date(now).toISOString().split("T")[0] ?? "",
+        dateKey: todayIso,
         assigned,
         shiftStart: "10:00",
         shiftEnd: "16:00",
         shift: toShiftState(session, now),
         counters: [assigned],
         countersOpen: session.counter ? 1 : 0,
-        countersTotal: 4,
-        waiting: 3,
+        countersTotal,
+        waiting,
         lastShift: null,
       };
     },
@@ -448,6 +497,31 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       const session = requireStaffSession();
       const branch = await getBranch(session.staff.branchId);
       const now = clock.now();
+      const todayIso = new Date(now).toISOString().split("T")[0];
+
+      let served = 0;
+      let noShows = 0;
+      try {
+        const { count: sCount } = await sb
+          .from("tokens")
+          .select("*", { count: "exact", head: true })
+          .eq("branch_id", session.staff.branchId)
+          .eq("counter", session.counter ?? 1)
+          .not("served_at", "is", null)
+          .gte("created_at", `${todayIso}T00:00:00Z`);
+        served = sCount ?? 0;
+
+        const { count: nCount } = await sb
+          .from("tokens")
+          .select("*", { count: "exact", head: true })
+          .eq("branch_id", session.staff.branchId)
+          .eq("counter", session.counter ?? 1)
+          .not("missed_at", "is", null)
+          .gte("created_at", `${todayIso}T00:00:00Z`);
+        noShows = nCount ?? 0;
+      } catch {
+        // default 0
+      }
 
       return {
         staff: session.staff,
@@ -456,9 +530,9 @@ export function createStaffService(client?: SupabaseClient): StaffService {
         shift: toShiftState(session, now),
         now,
         summary: {
-          served: 5,
-          noShows: 1,
-          avgServiceMs: 6 * 60_000,
+          served,
+          noShows,
+          avgServiceMs: null,
           hourly: [],
         },
         autoClosed: [],

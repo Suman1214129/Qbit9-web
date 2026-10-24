@@ -136,7 +136,7 @@ export function StaffSignInScreen() {
 /** Masked PIN as underlined boxes. One real password input underneath, so password managers and screen readers work. */
 function PinField({ value, onChange, error, inputRef, onEnter }: { value: string; onChange: (v: string) => void; error: string | null; inputRef: React.RefObject<HTMLInputElement | null>; onEnter: () => void }) {
   const [focused, setFocused] = useState(false);
-  const boxes = STAFF_POLICY.pinMaxLength;
+  const boxes = STAFF_POLICY.pinMinLength; // 4 digits
   return (
     <div>
       <label htmlFor="staff-pin" className="text-[11.5px] text-muted">PIN</label>
@@ -170,7 +170,7 @@ function PinField({ value, onChange, error, inputRef, onEnter }: { value: string
           className="absolute inset-0 size-full cursor-text opacity-0"
         />
       </div>
-      <p id="staff-pin-error" role={error ? "alert" : undefined} className={cn("mt-1.5 text-xs", error ? "text-rust" : "text-muted")}>{error ?? `${STAFF_POLICY.pinMinLength} to ${STAFF_POLICY.pinMaxLength} digits`}</p>
+      <p id="staff-pin-error" role={error ? "alert" : undefined} className={cn("mt-1.5 text-xs", error ? "text-rust" : "text-muted")}>{error ?? "4-digit PIN"}</p>
     </div>
   );
 }
