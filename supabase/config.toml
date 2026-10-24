@@ -1,5 +1,5 @@
 # Supabase configuration for QBIT9
-project_id = "qbit9"
+project_id = "wjjboxrezqiunlejemfr"
 
 [api]
 enabled = true

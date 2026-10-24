@@ -1,6 +1,7 @@
 import { env } from "@/lib/env";
 import type { Services } from "./types";
 import { createMockServices } from "./mock";
+import { createSupabaseServices } from "./supabase";
 
 /**
  * The only place an adapter is chosen. Everything else receives `Services` from context.
@@ -12,7 +13,7 @@ export function createServices(): Services {
     case "mock":
       return createMockServices({ devtools: env.devtools });
     case "supabase":
-      throw new Error("The Supabase adapter is not implemented yet. See docs/backend-handoff.md.");
+      return createSupabaseServices();
     default:
       return createMockServices({ devtools: env.devtools });
   }

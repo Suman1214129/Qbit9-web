@@ -32,7 +32,7 @@ function createTestSupabaseAuthClient() {
         },
         error: null,
       }),
-      signInWithOtp: async ({ email, phone }: { email?: string; phone?: string }) => {
+      signInWithOtp: async ({ email: _email, phone: _phone }: { email?: string; phone?: string }) => {
         lastOtpToken = "4321";
         return { data: { user: null, session: null }, error: null };
       },
@@ -341,7 +341,7 @@ describe("Supabase Profile RLS Isolation Test", () => {
     expect(sessionAlice?.user.name).toBe("Alice");
 
     // Alice querying bob profile fails / returns null
-    const { data: bobProfile } = await client
+    const { data: _bobProfile } = await client
       .from("profiles")
       .select("*")
       .eq("id", "user_bob")
