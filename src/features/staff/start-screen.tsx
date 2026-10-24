@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Avatar, Button, Chip, Icon, Sheet, Skeleton, useToast } from "@/components/ui";
+import { Avatar, Button, Chip, Icon, Monogram, Sheet, Skeleton, useToast } from "@/components/ui";
 import { formatDayMonth, formatClock, tzParts, type StaffMember } from "@/domain";
 import { useStartShift } from "@/hooks/staff/mutations";
 import { useRoster } from "@/hooks/staff/queries";
@@ -62,7 +62,10 @@ export function StartScreen() {
         <div>
           <small className="text-[13px] text-muted">{formatDayMonth(now, tz)}</small>
           <h1 className="text-[28px] leading-[1.1] font-medium tracking-[-.7px] md:text-[34px]">{greeting(tzParts(now, tz).hour)}, {first}</h1>
-          <p className="mt-1 text-sm text-muted">{roster.branch.bankName}, {roster.branch.name}</p>
+          <div className="mt-1 flex items-center gap-2 text-sm text-muted">
+            <Monogram text={roster.branch.bankShort} size={22} className="rounded-md" />
+            <span>{roster.branch.bankName}, {roster.branch.name}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <StaffMenu />

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Logo } from "@/components/brand";
-import { Avatar, Button, Chip, Icon, IconButton, Sheet, Skeleton } from "@/components/ui";
+import { Avatar, Button, Chip, Icon, IconButton, Monogram, Sheet, Skeleton } from "@/components/ui";
 import { useRoster, useStaffSession } from "@/hooks/staff/queries";
 import { useStaffSignOut } from "@/hooks/staff/mutations";
 import { useStaffSync } from "@/hooks/staff/use-staff-sync";
@@ -52,7 +52,17 @@ function Sidebar() {
     <aside className="sticky top-0 hidden h-dvh flex-col gap-8 border-r border-ink/8 bg-surface px-5 py-7 lg:flex">
       <div className="px-2">
         <Logo />
-        <p className="mt-2 text-xs text-muted">Counter staff</p>
+        {roster?.branch ? (
+          <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-ink/[.03] p-2">
+            <Monogram text={roster.branch.bankShort} size={28} className="rounded-lg" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold">{roster.branch.bankName}</p>
+              <p className="truncate text-[11px] text-muted">{roster.branch.name}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-muted">Counter staff</p>
+        )}
       </div>
       <nav aria-label="Staff" className="flex flex-col gap-1">
         {STAFF_NAV.map((item) => {
