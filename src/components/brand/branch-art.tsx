@@ -6,16 +6,16 @@ export function BranchArt({ className }: { tag?: string; className?: string }) {
   return (
     <div
       className={cn(
-        "relative flex h-full w-full items-center justify-center overflow-hidden bg-rose/40",
+        "relative flex h-full w-full items-center justify-center overflow-hidden bg-transparent shadow-none",
         className
       )}
     >
       <Image
-        src="/Online Banking illustration 1.png"
+        src="/Online Banking illustration 4 (1) 1.png"
         alt="Online Banking illustration"
         fill
         sizes="(max-width: 768px) 100vw, 480px"
-        className="object-contain p-2"
+        className="object-contain"
         priority
       />
     </div>

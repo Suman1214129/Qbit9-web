@@ -73,7 +73,7 @@ export function StaffSignInScreen() {
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-rose/70 p-10 lg:flex">
         <Link href="/" aria-label="QBIT9 home"><Logo /></Link>
         <div className="flex flex-col gap-8">
-          <div className="h-[230px] overflow-hidden rounded-sheet shadow-card"><BranchArt /></div>
+          <div className="h-[230px] overflow-hidden rounded-sheet bg-transparent"><BranchArt /></div>
           <div>
             <p className="text-sm text-deep/70">Counter staff</p>
             <h2 className="mt-1 text-[34px] leading-[1.05] font-semibold tracking-[-1px] text-deep">One job: call the next person.</h2>
