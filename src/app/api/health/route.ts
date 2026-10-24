@@ -53,7 +53,8 @@ export async function GET() {
         },
       }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
       {
         status: "unhealthy",
@@ -61,7 +62,7 @@ export async function GET() {
         uptime,
         database: {
           status: "error",
-          error: String(err?.message || err),
+          error: errorMessage,
           latencyMs: Date.now() - start,
         },
         adapter: process.env.NEXT_PUBLIC_QBIT9_ADAPTER || "supabase",

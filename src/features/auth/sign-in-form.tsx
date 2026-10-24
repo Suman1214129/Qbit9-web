@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Field, Icon, InlineNote, Switch } from "@/components/ui";
 import { ContextPill, FlowShell } from "@/components/layout";
-import { formatPhoneDigits, normalizePhone, validateEmail, validatePhone, type OtpChannel } from "@/domain";
+import { formatPhoneDigits, normalizePhone, validatePhone } from "@/domain";
 import { useSession } from "@/hooks/queries";
 import { useRequestOtp } from "@/hooks/mutations";
 import { env } from "@/lib/env";
@@ -12,9 +12,6 @@ import { lastBranch } from "@/lib/last-branch";
 import { useJoinDraft } from "@/features/join/draft";
 import { safeNext, setPendingSignIn } from "./challenge";
 import { PrivacyNotice } from "./privacy-notice";
-
-/** SMS needs a paid gateway, so outside the mock it only appears once the flag is on. */
-const PHONE_ENABLED = env.featureSms || env.adapter === "mock";
 
 export function SignInForm() {
   const router = useRouter();

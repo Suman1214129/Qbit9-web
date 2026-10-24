@@ -329,7 +329,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
           .eq("branch_id", session.staff.branchId)
           .order("order_at", { ascending: true });
 
-        const allEntries: QueueEntry[] = (rows ?? []).map((r: any) => ({
+        const allEntries: QueueEntry[] = (rows ?? []).map((r: Record<string, unknown>) => ({
           id: String(r.id),
           code: String(r.code),
           number: Number(r.number),
@@ -342,7 +342,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
           priority: Array.isArray(r.priority) ? r.priority : [],
           joinedAt: Number(r.joined_at),
           orderAt: Number(r.order_at),
-          status: r.status,
+          status: (r.status as QueueEntry["status"]) || "waiting",
           held: Boolean(r.held),
           counter: r.counter ? Number(r.counter) : null,
           calledAt: r.called_at ? Number(r.called_at) : null,
@@ -353,7 +353,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
           note: r.note ? String(r.note) : null,
           recalls: Number(r.recalls || 0),
           closedAt: r.closed_at ? Number(r.closed_at) : null,
-          closedBy: (r.closed_by === "staff" || r.closed_by === "auto" || r.closed_by === "customer" || r.closed_by === "system") ? r.closed_by : null,
+          closedBy: r.closed_by === "staff" || r.closed_by === "auto" ? r.closed_by : null,
           avgServiceMin: Number(r.avg_service_min || 6),
         }));
 
@@ -396,7 +396,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       serviceId: ID;
       priority: PriorityTag[];
     }): Promise<WalkInResult> {
-      const session = requireStaffSession();
+      const _session = requireStaffSession();
       const now = clock.now();
 
       const entry: QueueEntry = {

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { normalizePhone, validatePhone } from "@/domain/validation";
 

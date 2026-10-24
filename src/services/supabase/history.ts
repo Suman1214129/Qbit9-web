@@ -6,8 +6,12 @@ import {
   historyStats,
   waitMid,
   type Booking,
+  type BookingStatus,
   type HistoryItem,
+  type PriorityTag,
+  type TokenFeedback,
   type TokenRecord,
+  type TokenSource,
 } from "@/domain";
 import { clock } from "@/lib/clock";
 import type { HistoryPage, HistoryService } from "../types";
@@ -55,8 +59,8 @@ export function createHistoryService(client?: SupabaseClient): HistoryService {
           serviceId: String(t.service_id),
           groupId: String(t.group_id),
           userId: String(t.user_id),
-          source: t.source as any,
-          priority: (t.priority as any) ?? [],
+          source: (t.source as TokenSource) || "app",
+          priority: (t.priority as PriorityTag[]) ?? [],
           joinedAt: new Date(String(t.joined_at)).getTime(),
           aheadAtJoin: Number(t.ahead_at_join ?? 0),
           delayPositions: Number(t.delay_positions ?? 0),
@@ -72,7 +76,7 @@ export function createHistoryService(client?: SupabaseClient): HistoryService {
           servedAt: t.served_at ? new Date(String(t.served_at)).getTime() : null,
           missedAt: t.missed_at ? new Date(String(t.missed_at)).getTime() : null,
           leftAt: t.left_at ? new Date(String(t.left_at)).getTime() : null,
-          feedback: (t.feedback as any) ?? null,
+          feedback: (t.feedback as TokenFeedback) ?? null,
           reconciledAt: t.reconciled_at ? new Date(String(t.reconciled_at)).getTime() : now,
           bookingId: t.booking_id ? String(t.booking_id) : null,
         }));
@@ -84,7 +88,7 @@ export function createHistoryService(client?: SupabaseClient): HistoryService {
           serviceId: String(b.service_id),
           startsAt: new Date(String(b.starts_at)).getTime(),
           durationMin: Number(b.duration_min ?? 30),
-          status: b.status as any,
+          status: (b.status as BookingStatus) || "confirmed",
           createdAt: new Date(String(b.created_at)).getTime(),
           tokenId: b.token_id ? String(b.token_id) : null,
         }));
