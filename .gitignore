@@ -12,3 +12,5 @@ next-env.d.ts
 .DS_Store
 /e2e-shots
 supabase/.temp/
+vercel.env
+*.env
