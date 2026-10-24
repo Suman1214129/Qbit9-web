@@ -90,7 +90,7 @@ export function VerifyForm() {
         <p className="mt-1 text-sm text-muted">
           Sent to {c.sentTo}.{" "}
           <button type="button" onClick={() => { setPendingSignIn(null); router.push("/sign-in"); }} className="text-primary-strong underline underline-offset-2">
-            Change {c.channel === "phone" ? "number" : "email"}
+            Change number
           </button>
         </p>
       </div>

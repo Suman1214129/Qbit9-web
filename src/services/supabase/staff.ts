@@ -298,8 +298,17 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       return buildCounterState(session);
     },
 
-    async setNote(_note: string): Promise<CounterState> {
+    async setNote(note: string): Promise<CounterState> {
       const session = requireStaffSession();
+      if (session.counter) {
+        await sb
+          .from("tokens")
+          .update({ note: note.slice(0, 140) })
+          .eq("branch_id", session.staff.branchId)
+          .eq("counter", session.counter)
+          .is("served_at", null)
+          .is("missed_at", null);
+      }
       return buildCounterState(session);
     },
 
@@ -311,19 +320,74 @@ export function createStaffService(client?: SupabaseClient): StaffService {
     async queue(scope: QueueScope): Promise<QueueState> {
       const session = requireStaffSession();
       const now = clock.now();
-      return {
-        scope,
-        now,
-        groupIds: ["grp_cash"],
-        counter: session.counter,
-        waiting: [],
-        atCounters: [],
-        mineCount: 0,
-        allCount: 0,
-        longestWaitMin: null,
-        myGroupIds: ["grp_cash"],
-        hasCurrent: false,
-      };
+      const myGroupIds = ["grp_cash", "grp_teller", "grp_advisor"];
+
+      try {
+        const { data: rows } = await sb
+          .from("staff_queue")
+          .select("*")
+          .eq("branch_id", session.staff.branchId)
+          .order("order_at", { ascending: true });
+
+        const allEntries: QueueEntry[] = (rows ?? []).map((r: any) => ({
+          id: String(r.id),
+          code: String(r.code),
+          number: Number(r.number),
+          name: r.name ? String(r.name) : null,
+          serviceId: String(r.service_id),
+          serviceName: String(r.service_name),
+          groupId: String(r.group_id),
+          origin: r.origin === "booking" ? "booking" : r.origin === "app" ? "app" : "counter",
+          live: Boolean(r.live),
+          priority: Array.isArray(r.priority) ? r.priority : [],
+          joinedAt: Number(r.joined_at),
+          orderAt: Number(r.order_at),
+          status: r.status,
+          held: Boolean(r.held),
+          counter: r.counter ? Number(r.counter) : null,
+          calledAt: r.called_at ? Number(r.called_at) : null,
+          arrivedAt: r.arrived_at ? Number(r.arrived_at) : null,
+          replied: Boolean(r.replied),
+          callDeadline: r.call_deadline ? Number(r.call_deadline) : null,
+          confirming: Boolean(r.confirming),
+          note: r.note ? String(r.note) : null,
+          recalls: Number(r.recalls || 0),
+          closedAt: r.closed_at ? Number(r.closed_at) : null,
+          closedBy: (r.closed_by === "staff" || r.closed_by === "auto" || r.closed_by === "customer" || r.closed_by === "system") ? r.closed_by : null,
+          avgServiceMin: Number(r.avg_service_min || 6),
+        }));
+
+        const waiting = allEntries.filter((e) => e.status === "waiting");
+        const atCounters = allEntries.filter((e) => e.counter !== null && !e.closedAt);
+
+        return {
+          scope,
+          now,
+          groupIds: myGroupIds,
+          counter: session.counter,
+          waiting,
+          atCounters,
+          mineCount: waiting.filter((e) => myGroupIds.includes(e.groupId)).length,
+          allCount: waiting.length,
+          longestWaitMin: waiting.length > 0 && waiting[0] ? Math.round((now - waiting[0].joinedAt) / 60_000) : null,
+          myGroupIds,
+          hasCurrent: atCounters.some((e) => e.counter === session.counter),
+        };
+      } catch {
+        return {
+          scope,
+          now,
+          groupIds: myGroupIds,
+          counter: session.counter,
+          waiting: [],
+          atCounters: [],
+          mineCount: 0,
+          allCount: 0,
+          longestWaitMin: null,
+          myGroupIds,
+          hasCurrent: false,
+        };
+      }
     },
 
     async issueWalkIn(input: {
@@ -407,8 +471,19 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       return this.today();
     },
 
-    subscribe(_onChange: () => void): () => void {
-      return () => {};
+    subscribe(onChange: () => void): () => void {
+      if (typeof window === "undefined") return () => {};
+      try {
+        const channel = sb
+          .channel("staff_queue_realtime")
+          .on("postgres_changes", { event: "*", schema: "public", table: "tokens" }, () => onChange())
+          .subscribe();
+        return () => {
+          sb.removeChannel(channel);
+        };
+      } catch {
+        return () => {};
+      }
     },
   };
 }

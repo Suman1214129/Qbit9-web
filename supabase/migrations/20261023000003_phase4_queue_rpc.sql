@@ -24,6 +24,8 @@ end;
 $$;
 
 -- 2. Enhanced token_view including avg_service_min, counters, and ahead_at_join
+drop view if exists token_view cascade;
+
 create or replace view token_view as
 with ranked_tokens as (
   select
@@ -159,6 +161,16 @@ join services s on s.id = t.service_id
 left join policy_config pc on pc.branch_id = t.branch_id
 left join group_counters gc on gc.branch_id = t.branch_id and gc.group_id = t.group_id
 left join now_serving_tokens nst on nst.branch_id = t.branch_id and nst.group_id = t.group_id and nst.day = t.day;
+
+create or replace function token_view(p_token_id text)
+returns setof token_view
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select * from token_view where id = p_token_id;
+$$;
 
 -- 3. Atomic join_queue RPC
 create or replace function join_queue(

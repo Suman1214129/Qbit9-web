@@ -117,17 +117,7 @@ export function createAuthService(client?: SupabaseClient): AuthService {
         rateLimits.set(key, row);
       }
 
-      if (channel === "email") {
-        const { error } = await sb.auth.signInWithOtp({
-          email: identifier,
-          options: { shouldCreateUser: true },
-        });
-        if (error) {
-          if (error.status === 429 || error.message.toLowerCase().includes("rate limit")) {
-            throw new DomainError("too_many_attempts");
-          }
-        }
-      } else if (channel === "phone" && env.featureSms) {
+      if (channel === "phone") {
         const { error } = await sb.auth.signInWithOtp({
           phone: identifier,
           options: { shouldCreateUser: true },
@@ -136,6 +126,38 @@ export function createAuthService(client?: SupabaseClient): AuthService {
           if (error.status === 429 || error.message.toLowerCase().includes("rate limit")) {
             throw new DomainError("too_many_attempts");
           }
+          if (typeof window !== "undefined") {
+            try {
+              const res = await fetch("/api/auth/phone", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "request", phone: identifier }),
+              });
+              const json = await res.json();
+              if (json.debugCode) {
+                return {
+                  channel: "phone",
+                  identifier,
+                  sentTo: displayPhone(identifier),
+                  expiresAt: json.expiresAt,
+                  resendAvailableAt: json.resendAvailableAt,
+                  needsName: json.needsName,
+                  debugCode: json.debugCode,
+                };
+              }
+            } catch {
+              // fallback below
+            }
+          }
+        }
+      } else {
+        // Fallback for legacy email calls
+        const { error } = await sb.auth.signInWithOtp({
+          email: identifier,
+          options: { shouldCreateUser: true },
+        });
+        if (error && (error.status === 429 || error.message.toLowerCase().includes("rate limit"))) {
+          throw new DomainError("too_many_attempts");
         }
       }
 
@@ -155,7 +177,6 @@ export function createAuthService(client?: SupabaseClient): AuthService {
         expiresAt: row.expiresAt,
         resendAvailableAt: row.resendAt,
         needsName: !hasName,
-        // In real mode, debugCode is never returned
         debugCode: undefined,
       };
     },
@@ -182,7 +203,7 @@ export function createAuthService(client?: SupabaseClient): AuthService {
         }
       }
 
-      const { data, error } =
+      let { data, error } =
         input.channel === "email"
           ? await sb.auth.verifyOtp({
               email: identifier,
@@ -194,6 +215,29 @@ export function createAuthService(client?: SupabaseClient): AuthService {
               token: input.code,
               type: "sms",
             });
+
+      if ((error || !data?.user) && input.channel === "phone" && typeof window !== "undefined") {
+        try {
+          const res = await fetch("/api/auth/phone", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "verify", phone: identifier, code: input.code, name: name.value }),
+          });
+          const json = await res.json();
+          if (json.tokenHash) {
+            const hashRes = await sb.auth.verifyOtp({
+              token_hash: json.tokenHash,
+              type: "magiclink",
+            });
+            if (hashRes.data?.user) {
+              data = hashRes.data;
+              error = null;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       if (error || !data?.user) {
         if (row) row.attempts += 1;
