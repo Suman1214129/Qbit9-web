@@ -4,7 +4,7 @@
  * `service_groups`, `services`, `counters` tables, see docs/backend-handoff.md).
  */
 import {
-  addDaysKey, nthWeekdayOfMonth, tzParts, weekdayOfKey, estimateWait,
+  tzParts, estimateWait,
   type Bank, type Branch, type DayHours, type EpochMs, type ID, type Service, type ServiceGroup, type ServiceGroupLive,
 } from "@/domain";
 import { waitingInGroup } from "./staff/live";
@@ -63,7 +63,7 @@ const SERVICE_LOAD: Record<string, number> = {
 };
 
 const hours = (weekday: DayHours, saturday: DayHours): DayHours[] => [null, weekday, weekday, weekday, weekday, weekday, saturday];
-const STANDARD_HOURS = hours({ open: "10:00", close: "16:00" }, { open: "10:00", close: "14:00" });
+const STANDARD_HOURS = hours({ open: "10:00", close: "16:00" }, { open: "10:00", close: "22:00" });
 
 interface BranchSeed {
   id: ID; bankSlug: string; slug: string; name: string; address: string; area: string; lat: number; lng: number;
@@ -80,26 +80,13 @@ const SEEDS: BranchSeed[] = [
 
 const factorByBranch = new Map(SEEDS.map((s) => [s.id, s.factor]));
 
-/** Banks close on the 2nd and 4th Saturdays. Computed around `now` so the sample stays current. */
-function closedDatesAround(now: EpochMs, tz: string): string[] {
-  const today = tzParts(now, tz).dateKey;
-  const out: string[] = [];
-  for (let i = -45; i <= 90; i++) {
-    const key = addDaysKey(today, i);
-    if (weekdayOfKey(key) !== 6) continue;
-    const n = nthWeekdayOfMonth(key);
-    if (n === 2 || n === 4) out.push(key);
-  }
-  return out;
-}
-
 let cache: { day: string; branches: Branch[] } | null = null;
 
 export function getBranches(now: EpochMs): Branch[] {
   const tz = "Asia/Kolkata";
   const day = tzParts(now, tz).dateKey;
   if (cache?.day === day) return cache.branches;
-  const closedDates = closedDatesAround(now, tz);
+  const closedDates: string[] = [];
   const branches = SEEDS.map<Branch>((s) => {
     const bank = BANKS.find((b) => b.slug === s.bankSlug) as Bank;
     const c = s.cashCounters;

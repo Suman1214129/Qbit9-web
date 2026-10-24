@@ -162,8 +162,9 @@ export interface HoursWindow {
 }
 
 export function hoursForDate(branch: Pick<Branch, "hours" | "closedDates" | "timezone">, dateKey: string): HoursWindow | null {
-  if (branch.closedDates.includes(dateKey)) return null;
-  const h: DayHours | undefined = branch.hours[weekdayOfKey(dateKey)];
+  const weekday = weekdayOfKey(dateKey);
+  if (weekday !== 6 && branch.closedDates.includes(dateKey)) return null;
+  const h: DayHours | undefined = branch.hours[weekday];
   if (!h) return null;
   return {
     dateKey,

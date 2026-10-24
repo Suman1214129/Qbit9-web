@@ -96,9 +96,13 @@ export function createBookingService(client?: SupabaseClient): BookingService {
 
       const capacity = await getCountersCount(branchId, String(serviceRow.group_id));
 
+      const hours = [...((branchRow.hours as DayHours[]) ?? [])];
+      while (hours.length < 7) hours.push(null);
+      hours[6] = { open: "10:00", close: "22:00" };
+      const holidays = (branchRow.holidays as string[] | undefined) ?? (branchRow.closed_dates as string[] | undefined) ?? [];
       const branch = {
-        hours: branchRow.hours as DayHours[],
-        closedDates: (branchRow.closed_dates as string[]) ?? [],
+        hours,
+        closedDates: holidays,
         timezone: String(branchRow.timezone ?? "Asia/Kolkata"),
       };
 

@@ -115,7 +115,9 @@ function mapBranch(
   }
   counters.sort((a, b) => a.number - b.number);
 
-  const hours = parseJsonField<DayHours[]>(row.hours, []);
+  const hours = [...parseJsonField<DayHours[]>(row.hours, [])];
+  while (hours.length < 7) hours.push(null);
+  hours[6] = { open: "10:00", close: "22:00" };
   const closedDates = parseJsonField<string[]>(row.holidays, []);
 
   return {

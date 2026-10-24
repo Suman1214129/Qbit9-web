@@ -63,7 +63,7 @@ export interface Branch {
   timezone: string;
   /** Seven entries, Sunday first. */
   hours: DayHours[];
-  /** Branch-local dates (YYYY-MM-DD) the branch is shut despite normal hours, e.g. 2nd and 4th Saturdays. */
+  /** Branch-local dates (YYYY-MM-DD) the branch is shut despite normal hours. */
   closedDates: string[];
   counters: Counter[];
 }

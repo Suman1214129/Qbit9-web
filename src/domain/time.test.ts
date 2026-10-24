@@ -7,8 +7,8 @@ import {
 const IST = "Asia/Kolkata";
 const branch = {
   timezone: IST,
-  hours: [null, ...Array.from({ length: 5 }, () => ({ open: "10:00", close: "16:00" })), { open: "10:00", close: "14:00" }],
-  closedDates: ["2026-10-10"],
+  hours: [null, ...Array.from({ length: 5 }, () => ({ open: "10:00", close: "16:00" })), { open: "10:00", close: "22:00" }],
+  closedDates: ["2026-10-10", "2026-10-12"],
 };
 
 describe("timezone helpers", () => {
@@ -70,8 +70,14 @@ describe("labels", () => {
 describe("branch hours", () => {
   it("returns null for closed days and holidays", () => {
     expect(hoursForDate(branch, "2026-10-11")).toBeNull(); // Sunday
-    expect(hoursForDate(branch, "2026-10-10")).toBeNull(); // listed closure
-    expect(hoursForDate(branch, "2026-10-17")).not.toBeNull(); // normal Saturday
+    expect(hoursForDate(branch, "2026-10-12")).toBeNull(); // listed weekday closure
+    expect(hoursForDate(branch, "2026-10-10")).not.toBeNull(); // Saturday stays open
+  });
+  it("keeps Saturday open until 10 pm even when listed as a closure", () => {
+    const beforeClosing = openStatus(branch, zonedToEpoch("2026-10-10", "21:00", IST));
+    expect(beforeClosing.isOpen).toBe(true);
+    expect(beforeClosing.closesLabel).toBe("10 pm");
+    expect(openStatus(branch, zonedToEpoch("2026-10-10", "22:00", IST)).isOpen).toBe(false);
   });
   it("is open inside hours and says when it closes", () => {
     const s = openStatus(branch, zonedToEpoch("2026-10-16", "11:00", IST));
@@ -86,8 +92,8 @@ describe("branch hours", () => {
     expect(s.isOpen).toBe(false);
     expect(s.opensLabel).toBe("today at 10 am");
   });
-  it("skips Sunday after Saturday closes", () => {
-    const s = openStatus(branch, zonedToEpoch("2026-10-17", "15:00", IST));
+  it("reports Monday after Saturday closes", () => {
+    const s = openStatus(branch, zonedToEpoch("2026-10-17", "22:00", IST));
     expect(s.opensLabel).toBe("Mon 19 Oct at 10 am");
   });
 });

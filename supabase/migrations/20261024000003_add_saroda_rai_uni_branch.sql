@@ -34,7 +34,7 @@ values (
   72.4710,
   2000,
   'Asia/Kolkata',
-  '[null, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"14:00"}]'::jsonb,
+  '[null, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"16:00"}, {"open":"10:00","close":"22:00"}]'::jsonb,
   '[]'::jsonb
 ) on conflict (id) do update set
   name          = excluded.name,

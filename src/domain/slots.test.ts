@@ -6,8 +6,8 @@ import { zonedToEpoch } from "./time";
 const IST = "Asia/Kolkata";
 const branch = {
   timezone: IST,
-  hours: [null, ...Array.from({ length: 5 }, () => ({ open: "10:00", close: "16:00" })), { open: "10:00", close: "14:00" }],
-  closedDates: ["2026-10-24"],
+  hours: [null, ...Array.from({ length: 5 }, () => ({ open: "10:00", close: "16:00" })), { open: "10:00", close: "22:00" }],
+  closedDates: ["2026-10-24", "2026-10-26"],
 };
 const now = zonedToEpoch("2026-10-16", "11:00", IST); // Friday 11:00
 
@@ -55,9 +55,11 @@ describe("buildAvailability", () => {
     const late = buildAvailability({ branch, now: zonedToEpoch("2026-10-16", "15:45", IST), taken: () => 0, capacity: 1 });
     expect(late[0]?.open).toBe(false);
   });
-  it("respects listed closures", () => {
+  it("keeps Saturdays open and respects listed weekday closures", () => {
     const d = buildAvailability({ branch, now: zonedToEpoch("2026-10-22", "09:00", IST), taken: () => 0, capacity: 1 });
-    expect(d.find((x) => x.date === "2026-10-24")?.open).toBe(false);
+    expect(d.find((x) => x.date === "2026-10-24")?.open).toBe(true);
+    expect(d.find((x) => x.date === "2026-10-24")?.slots).toHaveLength(24);
+    expect(d.find((x) => x.date === "2026-10-26")?.open).toBe(false);
   });
 });
 

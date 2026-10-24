@@ -16,4 +16,4 @@ Entry: QR at branch to `/b/[bank]/[branch]`, or `/branches` search.
 
 Lapse rules: missing check-in or call window pushes you back 3 positions; after 2 lapses the token is missed. Voluntary move back is not a lapse.
 
-Booking: 30 min slots, up to 7 days ahead, 30 min lead, 15 min hold, check-in opens 30 min before, cancel until 30 min before, reminder 60 min before, .ics export. Second and fourth Saturdays closed.
+Booking: 30 min slots, up to 7 days ahead, 30 min lead, 15 min hold, check-in opens 30 min before, cancel until 30 min before, reminder 60 min before, .ics export. All branches are open Saturdays from 10 am to 10 pm.

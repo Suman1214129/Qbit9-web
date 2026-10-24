@@ -1980,8 +1980,8 @@ insert into branches (id, bank_id, slug, name, address, area, city, lat, lng, jo
     72.5714,
     200,
     'Asia/Kolkata',
-    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "14:00"}]'::jsonb,
-    '["2026-10-10", "2026-10-24"]'::jsonb
+    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "22:00"}]'::jsonb,
+    '[]'::jsonb
   ),
   (
     'br_sbi_ring_road',
@@ -1995,8 +1995,8 @@ insert into branches (id, bank_id, slug, name, address, area, city, lat, lng, jo
     72.5593,
     200,
     'Asia/Kolkata',
-    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "14:00"}]'::jsonb,
-    '["2026-10-10", "2026-10-24"]'::jsonb
+    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "22:00"}]'::jsonb,
+    '[]'::jsonb
   ),
   (
     'br_sbi_station_road',
@@ -2010,8 +2010,8 @@ insert into branches (id, bank_id, slug, name, address, area, city, lat, lng, jo
     72.6012,
     200,
     'Asia/Kolkata',
-    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "14:00"}]'::jsonb,
-    '["2026-10-10", "2026-10-24"]'::jsonb
+    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "22:00"}]'::jsonb,
+    '[]'::jsonb
   ),
   (
     'br_bob_navrangpura',
@@ -2025,8 +2025,8 @@ insert into branches (id, bank_id, slug, name, address, area, city, lat, lng, jo
     72.5611,
     200,
     'Asia/Kolkata',
-    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "14:00"}]'::jsonb,
-    '["2026-10-10", "2026-10-24"]'::jsonb
+    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "22:00"}]'::jsonb,
+    '[]'::jsonb
   ),
   (
     'br_bob_satellite',
@@ -2040,8 +2040,8 @@ insert into branches (id, bank_id, slug, name, address, area, city, lat, lng, jo
     72.5290,
     200,
     'Asia/Kolkata',
-    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "14:00"}]'::jsonb,
-    '["2026-10-10", "2026-10-24"]'::jsonb
+    '[null, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "16:00"}, {"open": "10:00", "close": "22:00"}]'::jsonb,
+    '[]'::jsonb
   )
 on conflict (id) do nothing;
 
