@@ -46,7 +46,7 @@ export interface Policy {
 }
 
 export const DEFAULT_POLICY: Policy = {
-  accuracyLimitM: 150,
+  accuracyLimitM: 2000,
   proofTtlMs: 10 * 60_000,
   nearThreshold: 3,
   checkinWindowMs: 3 * 60_000,

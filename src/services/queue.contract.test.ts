@@ -25,7 +25,7 @@ const MOCK_PROOF_FAR: LocationProof = {
 const MOCK_PROOF_INACCURATE: LocationProof = {
   lat: 23.0225,
   lng: 72.5714,
-  accuracyM: 300,
+  accuracyM: 5000,
   capturedAt: 1_700_000_000_000,
 };
 

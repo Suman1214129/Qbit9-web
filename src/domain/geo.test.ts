@@ -48,7 +48,7 @@ describe("evaluateProximity", () => {
     expect(r.shortfallM).toBeCloseTo(r.distanceM - 200, 3);
   });
   it("rejects imprecise readings before judging distance", () => {
-    expect(evaluateProximity(proof(23.0525, 72.5714, 400), branch, NOW).status).toBe("low_accuracy");
+    expect(evaluateProximity(proof(23.0525, 72.5714, 3000), branch, NOW).status).toBe("low_accuracy");
   });
   it("rejects stale readings", () => {
     expect(evaluateProximity(proof(23.0228, 72.5714, 20, NOW - 11 * 60_000), branch, NOW).status).toBe("stale");
