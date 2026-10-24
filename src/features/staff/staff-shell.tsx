@@ -9,7 +9,6 @@ import { useStaffSignOut } from "@/hooks/staff/mutations";
 import { useStaffSync } from "@/hooks/staff/use-staff-sync";
 import { cn } from "@/lib/cn";
 import { clearLeaving, isLeaving, markLeaving } from "@/lib/leaving";
-import { DemoControls } from "./demo-controls";
 import { STAFF_NAV, isStaffActive } from "./staff-nav";
 
 /** Signed in staff only. Everyone else goes to the staff sign in and comes back here afterwards. */
@@ -41,7 +40,6 @@ export function StaffShell({ children }: { children: ReactNode }) {
         <main className="mx-auto w-full max-w-[560px] px-[18px] md:max-w-[760px] md:px-8 lg:max-w-[1120px] lg:px-12 lg:pt-6">{children}</main>
       </div>
       <BottomNav />
-      <DemoControls />
     </div>
   );
 }

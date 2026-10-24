@@ -7,9 +7,9 @@ const bool = (v: string | undefined, fallback: boolean) => (v == null || v === "
 export type AdapterName = "mock" | "supabase";
 
 export const env = {
-  adapter: ((process.env.NEXT_PUBLIC_QBIT9_ADAPTER as AdapterName | undefined) ?? "mock") as AdapterName,
+  adapter: ((process.env.NEXT_PUBLIC_QBIT9_ADAPTER as AdapterName | undefined) ?? "supabase") as AdapterName,
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  devtools: bool(process.env.NEXT_PUBLIC_ENABLE_DEVTOOLS, process.env.NODE_ENV !== "production"),
+  devtools: false,
   /**
    * Serves the staff console under /staff. Turn off to ship a customer-only site, or to host the
    * staff app on its own deployment later. Staff routes return 404 when false.
@@ -22,7 +22,7 @@ export const env = {
    * can only alert while the tab is open, and the copy says so instead of overpromising.
    */
   get backgroundAlerts(): boolean {
-    return (process.env.NEXT_PUBLIC_QBIT9_ADAPTER ?? "mock") !== "mock";
+    return (process.env.NEXT_PUBLIC_QBIT9_ADAPTER ?? "supabase") !== "mock";
   },
   /** Supabase client config for real backend adapter. */
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",

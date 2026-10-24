@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 import { isDomainError } from "@/domain";
 import { ToastProvider } from "@/components/ui";
 import { AlertsWatcher } from "@/features/alerts/alerts-watcher";
-import { DevPanel } from "@/features/devtools/dev-panel";
 import { ServiceWorkerRegister } from "@/features/pwa/sw-register";
 import { OfflineBanner } from "@/features/pwa/offline-banner";
 import { QueueSync } from "./queue-sync";
@@ -31,7 +30,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <QueueSync />
           <AlertsWatcher />
           <OfflineBanner />
-          <DevPanel />
           <ServiceWorkerRegister />
         </ToastProvider>
       </QueryClientProvider>

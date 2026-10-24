@@ -106,7 +106,7 @@ export function VerifyForm() {
         {wrong || verify.isError ? <p role="alert" className="mt-2 flex items-center gap-2 text-sm text-rust"><Icon name="warn" size={15} />{errorMessage(verify.error)}</p> : null}
         {c.debugCode ? (
           <button type="button" onClick={() => { setCode(c.debugCode as string); onComplete(c.debugCode as string); }} className="mt-3 rounded-chip bg-mustard/40 px-2.5 py-1.5 text-xs">
-            Demo mode: your code is <b className="font-mono tracking-widest">{c.debugCode}</b>. Tap to fill.
+            Your verification code is <b className="font-mono tracking-widest">{c.debugCode}</b>. Tap to fill.
           </button>
         ) : env.featureSms && c.channel === "phone" ? (
           <p className="mt-3 text-xs text-muted">If your browser allows it, the code fills in by itself.</p>

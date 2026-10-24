@@ -8,7 +8,6 @@ import { isDomainError, validateEmployeeId, validatePin, STAFF_POLICY } from "@/
 import { useStaffSignIn } from "@/hooks/staff/mutations";
 import { useStaffSession } from "@/hooks/staff/queries";
 import { cn } from "@/lib/cn";
-import { env } from "@/lib/env";
 import { errorMessage } from "@/lib/errors";
 import { useServices } from "@/providers/services-provider";
 
@@ -65,7 +64,6 @@ export function StaffSignInScreen() {
   };
 
   const caps = staff.capabilities();
-  const demo = env.adapter === "mock";
   const lockLeft = locked ? Math.ceil(((lockedUntil as number) - now) / 1000) : 0;
 
   return (
@@ -111,11 +109,6 @@ export function StaffSignInScreen() {
 
           {error?.field === "form" ? <InlineNote icon="warn" tone="warn">{locked ? `${error.message} Try again in ${Math.floor(lockLeft / 60)}:${String(lockLeft % 60).padStart(2, "0")}.` : error.message}</InlineNote> : null}
 
-          {demo ? (
-            <button type="button" onClick={() => { setEmployeeId("E48213"); setPin("4821"); setError(null); }} className="rounded-2xl bg-mustard/40 px-3.5 py-2.5 text-left text-[13px] leading-snug">
-              Demo mode: sample staff E48213 with PIN <b>4821</b>. Tap to fill.
-            </button>
-          ) : null}
 
           <div className="flex flex-col gap-3">
             <Button type="submit" loading={signIn.isPending} disabled={locked || !employeeId || pin.length < STAFF_POLICY.pinMinLength}>Sign in</Button>

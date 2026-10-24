@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Field, Icon, InlineNote, Switch } from "@/components/ui";
+import { Button, Field, Icon, Switch } from "@/components/ui";
 import { ContextPill, FlowShell } from "@/components/layout";
 import { formatPhoneDigits, normalizePhone, validatePhone } from "@/domain";
 import { useSession } from "@/hooks/queries";
 import { useRequestOtp } from "@/hooks/mutations";
-import { env } from "@/lib/env";
 import { errorMessage } from "@/lib/errors";
 import { lastBranch } from "@/lib/last-branch";
 import { useJoinDraft } from "@/features/join/draft";
@@ -81,8 +80,6 @@ export function SignInForm() {
           error={error}
           autoFocus
         />
-
-        {env.adapter === "mock" ? <InlineNote icon="info">Demo mode: no SMS is sent. The code appears on the next screen.</InlineNote> : null}
 
         <label className="flex items-center gap-3 text-sm">
           <span className="flex-1">

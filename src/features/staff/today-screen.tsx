@@ -4,7 +4,6 @@ import { Button, InlineNote, Skeleton, useToast } from "@/components/ui";
 import { formatClock } from "@/domain";
 import { useUndoClosure } from "@/hooks/staff/mutations";
 import { useStaffToday } from "@/hooks/staff/queries";
-import { env } from "@/lib/env";
 import { errorMessage } from "@/lib/errors";
 import { StatTile } from "./entry-bits";
 import { EndShiftSheet } from "./end-shift-sheet";
@@ -54,7 +53,6 @@ export function TodayScreen() {
                 </div>
               ))}
             </div>
-            {env.adapter === "mock" ? <p className="mt-3 text-[12px] text-muted">Earlier hours are demo data in this preview.</p> : null}
           </section>
         </div>
 

@@ -6,7 +6,6 @@ import { formatDayMonth, formatClock, tzParts, type StaffMember } from "@/domain
 import { useStartShift } from "@/hooks/staff/mutations";
 import { useRoster } from "@/hooks/staff/queries";
 import { cn } from "@/lib/cn";
-import { env } from "@/lib/env";
 import { errorMessage } from "@/lib/errors";
 import { pluralize } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
@@ -99,7 +98,6 @@ export function StartScreen() {
         <Button size="md" loading={start.isPending} onClick={() => go()}>Start shift at Counter {roster.assigned.number}</Button>
         <Button variant="link" onClick={() => setPick(true)}>Not at Counter {roster.assigned.number}? Choose another</Button>
       </div>
-      {env.adapter === "mock" ? <p className="text-center text-xs text-muted">Demo mode: customers and earlier visits are simulated.</p> : null}
 
       <Sheet open={pick} onClose={() => setPick(false)} title="Choose your counter">
         <CounterList counters={roster.counters} staff={roster.staff} assigned={roster.assigned.number} busy={start.isPending} onPick={(n) => { setPick(false); void go(n); }} />
