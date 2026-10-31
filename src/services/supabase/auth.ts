@@ -73,8 +73,12 @@ export function createAuthService(client?: SupabaseClient): AuthService {
 
   return {
     async getSession(): Promise<Session | null> {
-      const user = await getAuthUser();
-      if (!user) return null;
+      // Use getSession() first — reads from localStorage/cookie, no network round-trip.
+      // This prevents AuthGate from flashing to /sign-in during hydration.
+      const { data: localSession } = await sb.auth.getSession();
+      if (!localSession?.session?.user) return null;
+
+      const user = localSession.session.user;
 
       const profile = await getProfile(user.id);
       if (!profile) return null;
@@ -93,9 +97,8 @@ export function createAuthService(client?: SupabaseClient): AuthService {
         createdAt,
       };
 
-      const { data: sessionData } = await sb.auth.getSession();
-      const expiresAt = sessionData?.session?.expires_at
-        ? sessionData.session.expires_at * 1000
+      const expiresAt = localSession.session.expires_at
+        ? localSession.session.expires_at * 1000
         : clock.now() + 12 * 3_600_000;
 
       return {

@@ -493,3 +493,7 @@ Tick each item with evidence (a test, a screenshot, a config link) before the pi
 | Data residency and retention | DPDP compliance, bank audit | Mumbai region, 90 day personal field retention |
 | Service level | Uptime and support hours expected by the bank | 99.5 percent in branch hours, to be agreed |
 | Pricing and ownership of the Supabase, Vercel and messaging accounts | Who pays and who holds the keys | Navchetna owns them for the pilot |
+
+
+
+

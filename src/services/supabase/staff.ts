@@ -2,7 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DomainError,
   STAFF_POLICY,
-  formatTokenCode,
+  estimateWait,
+  pickNext,
   type BreakReason,
   type EpochMs,
   type ID,
@@ -41,13 +42,44 @@ interface StaffSessionStorage {
 
 let staffSessionCache: StaffSessionStorage | null = null;
 
+const SESSION_KEY = "qbit9.staff.session.v1";
+
+function persistSession(s: StaffSessionStorage | null): void {
+  if (typeof window === "undefined") return;
+  if (s === null) {
+    localStorage.removeItem(SESSION_KEY);
+  } else {
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    } catch { /* storage full or private mode */ }
+  }
+}
+
+function restoreSession(): void {
+  if (typeof window === "undefined" || staffSessionCache) return;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as StaffSessionStorage;
+    if (parsed.expiresAt > Date.now()) {
+      staffSessionCache = parsed;
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  } catch { /* corrupted data */ }
+}
+
 export function createStaffService(client?: SupabaseClient): StaffService {
   const sb = client ?? getSupabaseClient();
+
+  // Restore session from localStorage on every service creation (page load/reload)
+  restoreSession();
 
   const requireStaffSession = (): StaffSessionStorage => {
     const now = clock.now();
     if (!staffSessionCache || staffSessionCache.expiresAt <= now) {
       staffSessionCache = null;
+      persistSession(null);
       throw new DomainError("not_signed_in");
     }
     return staffSessionCache;
@@ -76,44 +108,129 @@ export function createStaffService(client?: SupabaseClient): StaffService {
     nudgeSnoozedUntil: null,
   });
 
+  const rowToEntry = (r: Record<string, unknown>): QueueEntry => ({
+    id: String(r.id),
+    code: String(r.code),
+    number: Number(r.number),
+    name: r.name ? String(r.name) : null,
+    serviceId: String(r.service_id),
+    serviceName: String(r.service_name),
+    groupId: String(r.group_id),
+    origin: r.origin === "booking" ? "booking" : r.origin === "app" ? "app" : "counter",
+    live: Boolean(r.live),
+    priority: Array.isArray(r.priority) ? r.priority : [],
+    joinedAt: Number(r.joined_at),
+    orderAt: Number(r.order_at),
+    status: (r.status as QueueEntry["status"]) || "waiting",
+    held: Boolean(r.held),
+    counter: r.counter != null ? Number(r.counter) : null,
+    calledAt: r.called_at ? Number(r.called_at) : null,
+    arrivedAt: r.arrived_at ? Number(r.arrived_at) : null,
+    replied: Boolean(r.replied),
+    callDeadline: r.call_deadline ? Number(r.call_deadline) : null,
+    confirming: Boolean(r.confirming),
+    note: r.note ? String(r.note) : null,
+    recalls: Number(r.recalls || 0),
+    closedAt: r.closed_at ? Number(r.closed_at) : null,
+    closedBy: r.closed_by === "staff" || r.closed_by === "auto" ? r.closed_by : null,
+    avgServiceMin: Number(r.avg_service_min || 6),
+  });
+
+  const getCounterGroupIds = async (branchId: ID, counterNumber: number): Promise<string[]> => {
+    try {
+      const { data } = await sb
+        .from("counters")
+        .select("id, counter_groups(group_id)")
+        .eq("branch_id", branchId)
+        .eq("number", counterNumber)
+        .maybeSingle();
+      if (!data) return [];
+      const cgs = (data as Record<string, unknown>).counter_groups;
+      return Array.isArray(cgs) ? cgs.map((g: Record<string, unknown>) => String(g.group_id)) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const getAllBranchGroupIds = async (branchId: ID): Promise<string[]> => {
+    try {
+      const { data } = await sb
+        .from("service_groups")
+        .select("id")
+        .eq("branch_id", branchId);
+      return (data ?? []).map((g: Record<string, unknown>) => String(g.id));
+    } catch {
+      return [];
+    }
+  };
+
   const buildCounterState = async (session: StaffSessionStorage): Promise<CounterState> => {
     const now = clock.now();
     const branch = await getBranch(session.staff.branchId);
     const todayIso = new Date(now).toISOString().split("T")[0];
-
     const counterNumber = session.counter ?? 1;
+
+    // Fetch real group IDs for this counter from DB
+    const groupIds = await getCounterGroupIds(session.staff.branchId, counterNumber);
+    // Fall back to ALL branch groups (not hardcoded strings) so nothing is filtered out
+    const myGroupIds = groupIds.length ? groupIds : await getAllBranchGroupIds(session.staff.branchId);
+
+    // Fetch service names for the counter option
+    let serviceNames: string[] = [];
+    if (myGroupIds.length) {
+      try {
+        const { data: svcs } = await sb
+          .from("services")
+          .select("name, group_id")
+          .in("group_id", myGroupIds);
+        serviceNames = (svcs ?? []).map((s: Record<string, unknown>) => String(s.name));
+      } catch { /* default empty */ }
+    }
+
     const counterOption: CounterOption = {
       number: counterNumber,
-      groupIds: ["grp_cash", "grp_accounts"],
-      serviceNames: ["Cash deposit or withdrawal", "Open an account"],
+      groupIds: myGroupIds,
+      serviceNames,
       takenBy: session.staff.name,
       onBreak: session.shiftStatus === "break",
     };
 
-    let served = 0;
-    let waitingMine = 0;
+    // Fetch all live queue entries for this branch today
+    let allEntries: QueueEntry[] = [];
     try {
-      const { count: sCount } = await sb
-        .from("tokens")
-        .select("*", { count: "exact", head: true })
+      const { data: rows } = await sb
+        .from("staff_queue")
+        .select("*")
+        .eq("branch_id", session.staff.branchId)
+        .eq("day", todayIso)
+        .order("order_at", { ascending: true });
+      allEntries = (rows ?? []).map((r: Record<string, unknown>) => rowToEntry(r));
+    } catch { /* default empty */ }
+
+    const waiting = allEntries.filter((e) => e.status === "waiting" && myGroupIds.includes(e.groupId));
+    const atCounter = allEntries.filter((e) => e.counter === counterNumber && (e.status === "called" || e.status === "serving"));
+    const current = atCounter.find((e) => !e.held) ?? null;
+    const held = atCounter.filter((e) => e.held);
+    const next = waiting.slice(0, 4);
+    const nextCallable = pickNext(waiting, myGroupIds);
+
+    // Served count for today at this counter
+    let served = 0;
+    let avgServiceMs: number | null = null;
+    try {
+      const { data: closedRows } = await sb
+        .from("staff_queue")
+        .select("status, arrived_at, closed_at")
         .eq("branch_id", session.staff.branchId)
         .eq("counter", counterNumber)
-        .not("served_at", "is", null)
-        .gte("created_at", `${todayIso}T00:00:00Z`);
-      served = sCount ?? 0;
-
-      const { count: wCount } = await sb
-        .from("tokens")
-        .select("*", { count: "exact", head: true })
-        .eq("branch_id", session.staff.branchId)
-        .is("served_at", null)
-        .is("missed_at", null)
-        .is("left_at", null)
-        .gte("created_at", `${todayIso}T00:00:00Z`);
-      waitingMine = wCount ?? 0;
-    } catch {
-      // default 0
-    }
+        .eq("day", todayIso)
+        .eq("status", "served");
+      served = (closedRows ?? []).length;
+      const times = (closedRows ?? [])
+        .filter((r: Record<string, unknown>) => r.arrived_at && r.closed_at)
+        .map((r: Record<string, unknown>) => Number(r.closed_at) - Number(r.arrived_at));
+      if (times.length) avgServiceMs = times.reduce((a: number, b: number) => a + b, 0) / times.length;
+    } catch { /* default 0 */ }
 
     return {
       staff: session.staff,
@@ -121,13 +238,13 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       counter: counterOption,
       shift: toShiftState(session, now),
       now,
-      waitingMine,
+      waitingMine: waiting.length,
       served,
-      avgServiceMs: null,
-      current: null,
-      held: [],
-      next: [],
-      nextCallable: null,
+      avgServiceMs,
+      current,
+      held,
+      next,
+      nextCallable,
       nudge: false,
       onBreak: session.shiftStatus === "break" && session.breakReason && session.breakStartedAt
         ? { reason: session.breakReason, startedAt: session.breakStartedAt, impactMin: 5 }
@@ -142,9 +259,12 @@ export function createStaffService(client?: SupabaseClient): StaffService {
     },
 
     async getSession(): Promise<StaffSession | null> {
+      // Always try to restore from localStorage first (handles page reload case)
+      restoreSession();
       const now = clock.now();
       if (!staffSessionCache || staffSessionCache.expiresAt <= now) {
         staffSessionCache = null;
+        persistSession(null);
         return null;
       }
       return {
@@ -180,6 +300,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
           breakReason: null,
           breakStartedAt: null,
         };
+        persistSession(staffSessionCache);
 
         return { staff: member, expiresAt };
       } catch (err) {
@@ -189,6 +310,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
 
     async signOut(): Promise<void> {
       staffSessionCache = null;
+      persistSession(null);
     },
 
     async roster(): Promise<Roster> {
@@ -219,10 +341,22 @@ export function createStaffService(client?: SupabaseClient): StaffService {
         // default 0
       }
 
+      // Get real counter group IDs (no hardcoded fallback)
+      const counterNumber = session.counter ?? 1;
+      const counterGroupIds = await getCounterGroupIds(session.staff.branchId, counterNumber);
+      const effectiveGroupIds = counterGroupIds.length ? counterGroupIds : await getAllBranchGroupIds(session.staff.branchId);
+      let serviceNames: string[] = [];
+      if (effectiveGroupIds.length) {
+        try {
+          const { data: svcs } = await sb.from("services").select("name").in("group_id", effectiveGroupIds);
+          serviceNames = (svcs ?? []).map((s: Record<string, unknown>) => String(s.name));
+        } catch { /* default */ }
+      }
+
       const assigned: CounterOption = {
-        number: session.counter ?? 1,
-        groupIds: ["grp_cash"],
-        serviceNames: ["Cash and cheques"],
+        number: counterNumber,
+        groupIds: effectiveGroupIds,
+        serviceNames,
         takenBy: session.counter ? session.staff.name : null,
         onBreak: session.shiftStatus === "break",
       };
@@ -249,6 +383,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       session.shiftStatus = "open";
       session.breakReason = null;
       session.breakStartedAt = null;
+      persistSession(session);
       return buildCounterState(session);
     },
 
@@ -258,6 +393,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       session.shiftStatus = "break";
       session.breakReason = reason;
       session.breakStartedAt = clock.now();
+      persistSession(session);
       return buildCounterState(session);
     },
 
@@ -266,6 +402,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       session.shiftStatus = "open";
       session.breakReason = null;
       session.breakStartedAt = null;
+      persistSession(session);
       return buildCounterState(session);
     },
 
@@ -273,6 +410,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       const session = requireStaffSession();
       session.shiftStatus = "ended";
       session.counter = null;
+      persistSession(session);
       return this.roster();
     },
 
@@ -369,71 +507,52 @@ export function createStaffService(client?: SupabaseClient): StaffService {
     async queue(scope: QueueScope): Promise<QueueState> {
       const session = requireStaffSession();
       const now = clock.now();
-      const myGroupIds = ["grp_cash", "grp_teller", "grp_advisor"];
+      const todayIso = new Date(now).toISOString().split("T")[0];
+      const counterNumber = session.counter ?? 1;
+      const counterGroupIds = await getCounterGroupIds(session.staff.branchId, counterNumber);
+      // Fall back to all branch groups — never hardcode group IDs
+      const effectiveGroupIds = counterGroupIds.length
+        ? counterGroupIds
+        : await getAllBranchGroupIds(session.staff.branchId);
 
       try {
         const { data: rows } = await sb
           .from("staff_queue")
           .select("*")
           .eq("branch_id", session.staff.branchId)
+          .eq("day", todayIso)
           .order("order_at", { ascending: true });
 
-        const allEntries: QueueEntry[] = (rows ?? []).map((r: Record<string, unknown>) => ({
-          id: String(r.id),
-          code: String(r.code),
-          number: Number(r.number),
-          name: r.name ? String(r.name) : null,
-          serviceId: String(r.service_id),
-          serviceName: String(r.service_name),
-          groupId: String(r.group_id),
-          origin: r.origin === "booking" ? "booking" : r.origin === "app" ? "app" : "counter",
-          live: Boolean(r.live),
-          priority: Array.isArray(r.priority) ? r.priority : [],
-          joinedAt: Number(r.joined_at),
-          orderAt: Number(r.order_at),
-          status: (r.status as QueueEntry["status"]) || "waiting",
-          held: Boolean(r.held),
-          counter: r.counter ? Number(r.counter) : null,
-          calledAt: r.called_at ? Number(r.called_at) : null,
-          arrivedAt: r.arrived_at ? Number(r.arrived_at) : null,
-          replied: Boolean(r.replied),
-          callDeadline: r.call_deadline ? Number(r.call_deadline) : null,
-          confirming: Boolean(r.confirming),
-          note: r.note ? String(r.note) : null,
-          recalls: Number(r.recalls || 0),
-          closedAt: r.closed_at ? Number(r.closed_at) : null,
-          closedBy: r.closed_by === "staff" || r.closed_by === "auto" ? r.closed_by : null,
-          avgServiceMin: Number(r.avg_service_min || 6),
-        }));
-
+        const allEntries: QueueEntry[] = (rows ?? []).map((r: Record<string, unknown>) => rowToEntry(r));
         const waiting = allEntries.filter((e) => e.status === "waiting");
         const atCounters = allEntries.filter((e) => e.counter !== null && !e.closedAt);
+        const shown = scope === "mine" ? waiting.filter((e) => effectiveGroupIds.includes(e.groupId)) : waiting;
 
         return {
           scope,
           now,
-          groupIds: myGroupIds,
+          groupIds: scope === "mine" ? effectiveGroupIds : [...new Set(allEntries.map((e) => e.groupId))],
           counter: session.counter,
-          waiting,
+          waiting: shown,
           atCounters,
-          mineCount: waiting.filter((e) => myGroupIds.includes(e.groupId)).length,
+          mineCount: waiting.filter((e) => effectiveGroupIds.includes(e.groupId)).length,
           allCount: waiting.length,
-          longestWaitMin: waiting.length > 0 && waiting[0] ? Math.round((now - waiting[0].joinedAt) / 60_000) : null,
-          myGroupIds,
+          longestWaitMin: shown.length > 0 && shown[0] ? Math.round((now - shown[0].joinedAt) / 60_000) : null,
+          myGroupIds: effectiveGroupIds,
           hasCurrent: atCounters.some((e) => e.counter === session.counter),
         };
       } catch {
         return {
           scope,
           now,
-          groupIds: myGroupIds,
+          groupIds: effectiveGroupIds,
           counter: session.counter,
           waiting: [],
           atCounters: [],
           mineCount: 0,
           allCount: 0,
           longestWaitMin: null,
-          myGroupIds,
+          myGroupIds: effectiveGroupIds,
           hasCurrent: false,
         };
       }
@@ -445,52 +564,69 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       serviceId: ID;
       priority: PriorityTag[];
     }): Promise<WalkInResult> {
-      const _session = requireStaffSession();
-      const now = clock.now();
-
-      const entry: QueueEntry = {
-        id: `walk_${now}`,
-        code: formatTokenCode("C", 45),
-        number: 45,
-        name: input.name || null,
-        serviceId: input.serviceId,
-        serviceName: "Walk-in service",
-        groupId: "grp_cash",
-        origin: "counter",
-        live: false,
-        priority: input.priority,
-        joinedAt: now,
-        orderAt: now,
-        status: "waiting",
-        held: false,
-        counter: null,
-        calledAt: null,
-        arrivedAt: null,
-        replied: false,
-        callDeadline: null,
-        confirming: false,
-        note: null,
-        recalls: 0,
-        closedAt: null,
-        closedBy: null,
-        avgServiceMin: 6,
-      };
-
-      return {
-        entry,
-        ahead: 0,
-        estWait: { minMin: 0, maxMin: 0 },
-      };
+      const session = requireStaffSession();
+      try {
+        const { data, error } = await sb.rpc("staff_issue_walk_in", {
+          p_staff_id: session.staff.id,
+          p_counter: session.counter ?? 1,
+          p_service_id: input.serviceId,
+          p_name: input.name || null,
+          p_phone: input.phone || null,
+          p_priority: input.priority,
+        });
+        if (error) throw toDomainError(error);
+        const now = clock.now();
+        const entry: QueueEntry = {
+          id: String(data.id),
+          code: String(data.code),
+          number: Number(data.number),
+          name: input.name || null,
+          serviceId: input.serviceId,
+          serviceName: String(data.service_name ?? "Walk-in"),
+          groupId: String(data.group_id),
+          origin: "counter",
+          live: false,
+          priority: input.priority,
+          joinedAt: now,
+          orderAt: now,
+          status: "waiting",
+          held: false,
+          counter: null,
+          calledAt: null,
+          arrivedAt: null,
+          replied: false,
+          callDeadline: null,
+          confirming: false,
+          note: null,
+          recalls: 0,
+          closedAt: null,
+          closedBy: null,
+          avgServiceMin: Number(data.avg_service_min ?? 6),
+        };
+        return { entry, ahead: Number(data.ahead ?? 0), estWait: estimateWait(Number(data.ahead ?? 0), entry.avgServiceMin, 1) };
+      } catch (err) {
+        throw toDomainError(err);
+      }
     },
 
     async walkInServices() {
-      return [
-        {
-          groupId: "grp_cash",
-          groupName: "Cash and cheques",
-          services: [{ id: "svc_cash", name: "Cash deposit or withdrawal" }],
-        },
-      ];
+      const session = requireStaffSession();
+      try {
+        const groupIds = await getCounterGroupIds(session.staff.branchId, session.counter ?? 1);
+        const query = sb.from("services").select("id, name, avg_service_min, group_id, service_groups(id, name)");
+        if (groupIds.length) query.in("group_id", groupIds);
+        const { data } = await query;
+        const byGroup = new Map<string, { groupId: string; groupName: string; services: { id: string; name: string }[] }>();
+        for (const svc of (data ?? []) as Record<string, unknown>[]) {
+          const gid = String(svc.group_id);
+          const sg = svc.service_groups as Record<string, unknown> | null;
+          if (!byGroup.has(gid)) byGroup.set(gid, { groupId: gid, groupName: String(sg?.name ?? gid), services: [] });
+          byGroup.get(gid)!.services.push({ id: String(svc.id), name: String(svc.name) });
+        }
+        return byGroup.size ? Array.from(byGroup.values()) : [{ groupId: "grp_cash", groupName: "Cash and cheques", services: [{ id: "svc_cash", name: "Cash deposit or withdrawal" }] }];
+      } catch {
+        return [{ groupId: "grp_cash", groupName: "Cash and cheques", services: [{ id: "svc_cash", name: "Cash deposit or withdrawal" }] }];
+      }
     },
 
     async today(): Promise<TodayState> {
@@ -498,30 +634,36 @@ export function createStaffService(client?: SupabaseClient): StaffService {
       const branch = await getBranch(session.staff.branchId);
       const now = clock.now();
       const todayIso = new Date(now).toISOString().split("T")[0];
+      const counterNumber = session.counter ?? 1;
+      const myGroupIds = await getCounterGroupIds(session.staff.branchId, counterNumber);
 
       let served = 0;
       let noShows = 0;
-      try {
-        const { count: sCount } = await sb
-          .from("tokens")
-          .select("*", { count: "exact", head: true })
-          .eq("branch_id", session.staff.branchId)
-          .eq("counter", session.counter ?? 1)
-          .not("served_at", "is", null)
-          .gte("created_at", `${todayIso}T00:00:00Z`);
-        served = sCount ?? 0;
+      let avgServiceMs: number | null = null;
+      let autoClosed: QueueEntry[] = [];
+      let hasCurrent = false;
+      let waitingMine = 0;
 
-        const { count: nCount } = await sb
-          .from("tokens")
-          .select("*", { count: "exact", head: true })
+      try {
+        const { data: rows } = await sb
+          .from("staff_queue")
+          .select("*")
           .eq("branch_id", session.staff.branchId)
-          .eq("counter", session.counter ?? 1)
-          .not("missed_at", "is", null)
-          .gte("created_at", `${todayIso}T00:00:00Z`);
-        noShows = nCount ?? 0;
-      } catch {
-        // default 0
-      }
+          .eq("day", todayIso)
+          .order("order_at", { ascending: true });
+
+        const entries = (rows ?? []).map((r: Record<string, unknown>) => rowToEntry(r));
+        served = entries.filter((e) => e.status === "served" && e.counter === counterNumber).length;
+        noShows = entries.filter((e) => e.status === "no_show" && e.counter === counterNumber).length;
+        waitingMine = entries.filter((e) => e.status === "waiting" && myGroupIds.includes(e.groupId)).length;
+        hasCurrent = entries.some((e) => e.counter === counterNumber && (e.status === "called" || e.status === "serving"));
+        autoClosed = entries.filter((e) => e.counter === counterNumber && e.status === "no_show" && e.closedBy === "auto");
+
+        const times = entries
+          .filter((e) => e.counter === counterNumber && e.status === "served" && e.arrivedAt && e.closedAt)
+          .map((e) => (e.closedAt ?? 0) - (e.arrivedAt ?? 0));
+        if (times.length) avgServiceMs = times.reduce((a, b) => a + b, 0) / times.length;
+      } catch { /* default 0 */ }
 
       return {
         staff: session.staff,
@@ -529,15 +671,10 @@ export function createStaffService(client?: SupabaseClient): StaffService {
         counter: session.counter,
         shift: toShiftState(session, now),
         now,
-        summary: {
-          served,
-          noShows,
-          avgServiceMs: null,
-          hourly: [],
-        },
-        autoClosed: [],
-        hasCurrent: false,
-        waitingMine: 0,
+        summary: { served, noShows, avgServiceMs, hourly: [] },
+        autoClosed,
+        hasCurrent,
+        waitingMine,
       };
     },
 

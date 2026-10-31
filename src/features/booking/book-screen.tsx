@@ -105,7 +105,7 @@ export function BookScreen() {
                   );
                 })
               ) : (
-                <EmptyState icon="cal" title="Closed this day">Pick another day. Banks close on Sundays and the 2nd and 4th Saturdays.</EmptyState>
+                <EmptyState icon="cal" title="Closed this day">Pick another day. Branches are closed on Sundays.</EmptyState>
               )}
             </>
           )}

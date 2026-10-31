@@ -17,7 +17,14 @@ import { getSupabaseClient } from "./client";
 
 export function toDomainError(err: unknown): DomainError {
   if (err instanceof DomainError) return err;
-  const msg = err instanceof Error ? err.message : String(err);
+  // Supabase PostgrestError is a plain object {message, code, details, hint} — not an Error instance.
+  // Fall back to any .message property before stringifying.
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === "object" && err !== null && "message" in err && typeof (err as Record<string, unknown>).message === "string"
+        ? ((err as Record<string, unknown>).message as string)
+        : String(err);
   if (msg.includes("already_in_queue")) return new DomainError("already_in_queue");
   if (msg.includes("location_stale")) return new DomainError("location_stale");
   if (msg.includes("location_inaccurate")) return new DomainError("location_inaccurate");
