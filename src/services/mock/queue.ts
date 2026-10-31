@@ -184,6 +184,13 @@ export function createQueueService(): QueueService {
     async onMyWay(id) {
       return act({ id }, (row, now) => markOnMyWay(row, ctxFor(row), now).record);
     },
+    async arrived(id) {
+      return act({ id }, (row, now) => {
+        row.servingStartedAt = now;
+        row.onMyWayAt = row.onMyWayAt ?? now;
+        return reconcile(row, ctxFor(row), now).record;
+      });
+    },
     async requestMoreTime(id) {
       return act({ id }, (row, now) => requestMoreTime(row, ctxFor(row), now).record);
     },

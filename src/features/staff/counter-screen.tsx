@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, EmptyState, Icon, InlineNote, Sheet, Skeleton, useToast } from "@/components/ui";
 import { BREAK_LABEL, BREAK_REASONS, isDomainError, type BreakReason, type QueueEntry } from "@/domain";
-import { useCallNext, useFinishCurrent, useHold, useRecall, useResume, useResumeFromBreak, useSnoozeNudge, useStartBreak } from "@/hooks/staff/mutations";
+import { useCallNext, useFinishCurrent, useHold, useRecall, useResume, useResumeFromBreak, useSnoozeNudge, useStartBreak, useStartServing } from "@/hooks/staff/mutations";
 import { useCounter } from "@/hooks/staff/queries";
 import { useNow } from "@/hooks/use-now";
 import { cn } from "@/lib/cn";
@@ -61,6 +61,7 @@ function useCaller(state: CounterState) {
   const toast = useToast();
   const call = useCallNext();
   const finish = useFinishCurrent();
+  const startServing = useStartServing();
   const [confirm, setConfirm] = useState(false);
   const cur = state.current;
   const next = state.nextCallable;
@@ -68,12 +69,28 @@ function useCaller(state: CounterState) {
   const fail = (title: string, e: unknown) => toast.show({ title, body: errorMessage(e), tone: "warn" });
 
   const callNext = async () => {
-    // Someone who has not arrived must be closed on purpose, so ask before anything changes.
+    // If not arrived yet, caller chooses to close as served or no-show
     if (cur && cur.status === "called") return setConfirm(true);
     try {
       await call.mutateAsync(undefined);
     } catch (e) {
       fail("Could not call the next person", e);
+    }
+  };
+
+  const callNextServed = async () => {
+    try {
+      await call.mutateAsync({ closeCurrentAs: "served" });
+    } catch (e) {
+      fail("Could not call the next person", e);
+    }
+  };
+
+  const startServingNow = async () => {
+    try {
+      await startServing.mutateAsync(undefined);
+    } catch (e) {
+      fail("Could not mark as arrived", e);
     }
   };
 
@@ -95,7 +112,16 @@ function useCaller(state: CounterState) {
     }
   };
 
-  return { callNext, noShow, finishNow, confirm, setConfirm, busy: call.isPending || finish.isPending };
+  return {
+    callNext,
+    callNextServed,
+    startServingNow,
+    noShow,
+    finishNow,
+    confirm,
+    setConfirm,
+    busy: call.isPending || finish.isPending || startServing.isPending,
+  };
 }
 
 /* ------------------------------------------------------------------- ready view */
@@ -135,8 +161,20 @@ function ReadyView({ state, now }: { state: CounterState; now: number }) {
         )}
 
         <div className="sticky bottom-[calc(76px+var(--safe-bottom))] z-10 flex flex-col gap-2 lg:static">
-          <Button size="md" disabled={!next} loading={caller.busy} onClick={caller.callNext} className="shadow-pop lg:shadow-none">
-            {next ? <>Call next <span className="ml-1 rounded-chip bg-white/20 px-2.5 py-1 text-[13px]">{next.code}</span></> : "No one to call"}
+          <Button
+            size="md"
+            disabled={!next}
+            loading={caller.busy}
+            onClick={caller.callNext}
+            className="h-14 text-base font-semibold shadow-pop lg:shadow-none"
+          >
+            {next ? (
+              <>
+                Call next <span className="ml-1.5 rounded-chip bg-white/20 px-3 py-1 text-sm font-bold tracking-wide">{next.code}</span>
+              </>
+            ) : (
+              "Nobody waiting to call"
+            )}
           </Button>
         </div>
       </div>
@@ -247,20 +285,63 @@ function ServingView({ state, now }: { state: CounterState; now: number }) {
           <ActionTile icon="list" label="Note" onClick={() => setNote(true)} />
         </div>
 
-        <div className="sticky bottom-[calc(76px+var(--safe-bottom))] z-10 flex flex-col gap-2 lg:static">
+        <div className="sticky bottom-[calc(76px+var(--safe-bottom))] z-10 flex flex-col gap-2.5 lg:static">
           {next ? (
-            <Button loading={caller.busy} onClick={caller.callNext} className="shadow-pop lg:shadow-none">
-              Call next <span className="ml-1 rounded-chip bg-white/20 px-2.5 py-1 text-[13px]">{next.code}{next.priority.length ? ", priority" : ""}</span>
-            </Button>
-          ) : serving ? (
-            <Button loading={caller.busy} onClick={caller.finishNow} className="shadow-pop lg:shadow-none">Finish {cur.code}</Button>
+            <>
+              <Button
+                size="md"
+                loading={caller.busy}
+                onClick={caller.callNextServed}
+                className="h-14 text-base font-semibold shadow-pop lg:shadow-none bg-primary text-white"
+              >
+                Served & Call Next <span className="ml-1.5 rounded-chip bg-white/20 px-3 py-1 text-sm font-bold tracking-wide">{next.code}{next.priority.length ? " (Priority)" : ""}</span>
+              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="md" loading={caller.busy} onClick={caller.finishNow}>
+                  Mark {cur.code} as Served
+                </Button>
+                {!serving ? (
+                  <Button variant="soft" size="md" loading={caller.busy} onClick={caller.startServingNow}>
+                    Customer Arrived
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="md" onClick={() => setEnd(true)}>
+                    End shift
+                  </Button>
+                )}
+              </div>
+            </>
           ) : (
-            <Button variant="danger" loading={caller.busy} onClick={() => caller.setConfirm(true)}>Mark {cur.code} as no-show</Button>
+            <>
+              <Button
+                size="md"
+                loading={caller.busy}
+                onClick={caller.finishNow}
+                className="h-14 text-base font-semibold shadow-pop lg:shadow-none bg-primary text-white"
+              >
+                Mark {cur.code} as Served (Complete)
+              </Button>
+              {!serving ? (
+                <Button variant="outline" size="md" loading={caller.busy} onClick={caller.startServingNow}>
+                  Customer Arrived (Start Service)
+                </Button>
+              ) : null}
+            </>
           )}
-          <p className="text-center text-[12.5px] text-muted">
-            {next ? `Calling next closes ${cur.code} automatically.` : serving ? "Nobody is waiting. Finish when the visit is done." : "Nobody is waiting."}
-          </p>
-          {!serving && next ? <button type="button" onClick={() => caller.setConfirm(true)} className="self-center text-[13px] text-muted underline underline-offset-[3px] hover:text-ink">Not coming? Mark {cur.code} as no-show</button> : null}
+
+          {!serving ? (
+            <button
+              type="button"
+              onClick={() => caller.setConfirm(true)}
+              className="mt-1 self-center text-xs text-muted/80 hover:text-rust underline underline-offset-4 transition-colors"
+            >
+              Customer did not arrive? Mark {cur.code} as no-show
+            </button>
+          ) : (
+            <p className="text-center text-[12px] text-muted">
+              {next ? `Calling next closes ${cur.code} automatically.` : "Nobody is waiting. Finish when customer leaves."}
+            </p>
+          )}
         </div>
       </div>
 

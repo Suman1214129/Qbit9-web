@@ -98,7 +98,7 @@ export function useCheckInBooking() {
   return useMutation({ mutationFn: (i: CheckInBookingInput) => queue.checkInBooking(i), onSuccess: refresh });
 }
 
-type TokenAction = "moveBack" | "onMyWay" | "requestMoreTime" | "leave";
+type TokenAction = "moveBack" | "onMyWay" | "requestMoreTime" | "leave" | "arrived";
 
 export function useTokenAction(action: TokenAction) {
   const { queue } = useServices();

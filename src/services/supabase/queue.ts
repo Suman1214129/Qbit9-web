@@ -234,6 +234,16 @@ export function createQueueService(client?: SupabaseClient): QueueService {
       }
     },
 
+    async arrived(id: ID): Promise<TokenView> {
+      try {
+        const { error } = await sb.rpc("customer_arrived", { p_token_id: id });
+        if (error) throw toDomainError(error);
+        return fetchTokenViewById(id);
+      } catch (err) {
+        throw toDomainError(err);
+      }
+    },
+
     async requestMoreTime(id: ID): Promise<TokenView> {
       try {
         const { error } = await sb.rpc("request_more_time", { p_token_id: id });

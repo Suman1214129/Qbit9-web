@@ -160,6 +160,8 @@ export interface StaffService {
 
   /* ------------------------------------------------------------------ counter */
   counter(): Promise<CounterState>;
+  /** Marks the called customer as arrived at the counter and starts serving. */
+  startServing(): Promise<CounterState>;
   /** Closes the current customer (as served unless told otherwise) and calls the next one. */
   callNext(opts?: CallOptions): Promise<CounterState>;
   /** Closes the current customer when nobody is waiting. */

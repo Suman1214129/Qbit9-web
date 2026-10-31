@@ -98,6 +98,7 @@ export interface QueueService {
   confirmCheckin(id: ID, proof: LocationProof): Promise<TokenView>;
   moveBack(id: ID): Promise<TokenView>;
   onMyWay(id: ID): Promise<TokenView>;
+  arrived(id: ID): Promise<TokenView>;
   requestMoreTime(id: ID): Promise<TokenView>;
   leave(id: ID): Promise<TokenView>;
   sendFeedback(id: ID, feedback: TokenFeedback): Promise<TokenView>;

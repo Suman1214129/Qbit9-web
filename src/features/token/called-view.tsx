@@ -14,13 +14,14 @@ export function CalledView({ token, branch, now }: { token: TokenView; branch: B
   const router = useRouter();
   const { data: session } = useSession();
   const onMyWay = useTokenAction("onMyWay");
+  const arrived = useTokenAction("arrived");
   const more = useTokenAction("requestMoreTime");
   const deadline = token.callDeadline ?? now;
   const total = Math.max(1, deadline - (token.calledAt ?? now));
   const left = deadline - now;
   const first = session?.user.name?.split(" ")[0];
   const floor = branch?.counters.map((c) => c.number) ?? [];
-  const error = onMyWay.error ?? more.error;
+  const error = onMyWay.error ?? arrived.error ?? more.error;
 
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto bg-rose pt-[var(--safe-top)] text-deep">
@@ -48,10 +49,42 @@ export function CalledView({ token, branch, now }: { token: TokenView; branch: B
               <FloorPlan counters={floor} highlight={token.counter} path className="hidden lg:block" />
             </div>
             {error ? <InlineNote tone="warn" icon="warn">{errorMessage(error)}</InlineNote> : null}
-            <Button loading={onMyWay.isPending} disabled={token.onMyWay} icon={token.onMyWay ? "check" : "walk"} onClick={() => onMyWay.mutate(token.id)}>
-              {token.onMyWay ? "On my way, counter told" : "I am on my way"}
+
+            {/* Primary Action: Customer has reached the counter */}
+            <Button
+              size="md"
+              loading={arrived.isPending}
+              icon="check"
+              onClick={() => arrived.mutate(token.id)}
+              className="h-14 text-base font-semibold shadow-pop lg:shadow-none bg-deep text-white hover:bg-ink"
+            >
+              I have reached Counter {token.counter ?? "1"}
             </Button>
-            <Button variant="link" className="text-deep decoration-deep/45" loading={more.isPending} disabled={!token.canRequestMoreTime} onClick={() => more.mutate(token.id)}>
+
+            {/* Secondary Action: Still walking */}
+            {!token.onMyWay ? (
+              <Button
+                variant="outline"
+                loading={onMyWay.isPending}
+                icon="walk"
+                onClick={() => onMyWay.mutate(token.id)}
+                className="border-deep/30 text-deep hover:bg-surface/50"
+              >
+                I am on my way
+              </Button>
+            ) : (
+              <p className="text-xs text-deep/80 font-medium py-1">
+                ✓ Counter notified that you are on your way
+              </p>
+            )}
+
+            <Button
+              variant="link"
+              className="text-deep decoration-deep/45 text-xs"
+              loading={more.isPending}
+              disabled={!token.canRequestMoreTime}
+              onClick={() => more.mutate(token.id)}
+            >
               {token.canRequestMoreTime ? "I need a few more minutes" : "Extra time used"}
             </Button>
           </div>

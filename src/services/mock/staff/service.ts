@@ -302,6 +302,19 @@ export function createStaffService(): StaffService {
       return fresh();
     },
 
+    async startServing() {
+      const c = ctxOpen();
+      const cur = currentAt(buildEntries(c.branch, c.now), c.counter);
+      if (!cur) throw new DomainError("invalid_state", "Nobody is at your counter");
+      const t = need(cur.id, c.now);
+      if (t.kind === "live") {
+        t.row.servingStartedAt = c.now;
+        t.row.onMyWayAt = t.row.onMyWayAt ?? c.now;
+        saveRow(t.row, t.row);
+      }
+      return fresh();
+    },
+
     async callNext(opts: CallOptions = {}) {
       const c = ctxOpen();
       ensureFloor(c.branch, c.now);

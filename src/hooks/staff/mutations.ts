@@ -68,6 +68,10 @@ export function useCallNext() {
   const { staff } = useServices();
   return useCounterAction<CallOptions | undefined>((o) => staff.callNext(o));
 }
+export function useStartServing() {
+  const { staff } = useServices();
+  return useCounterAction<void>(() => staff.startServing());
+}
 export function useFinishCurrent() {
   const { staff } = useServices();
   return useCounterAction<"served" | "no_show" | undefined>((as) => staff.finishCurrent(as));

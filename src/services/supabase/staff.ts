@@ -113,7 +113,9 @@ export function createStaffService(client?: SupabaseClient): StaffService {
     id: String(r.id),
     code: String(r.code),
     number: Number(r.number),
-    name: r.name ? String(r.name) : null,
+    name: (r.name && String(r.name).trim() && String(r.name).trim().toLowerCase() !== "customer")
+      ? String(r.name).trim()
+      : ((r.note && String(r.note).trim() && String(r.note).trim().toLowerCase() !== "customer") ? String(r.note).trim() : null),
     serviceId: String(r.service_id),
     serviceName: String(r.service_name),
     groupId: String(r.group_id),
@@ -428,6 +430,19 @@ export function createStaffService(client?: SupabaseClient): StaffService {
 
     async counter(): Promise<CounterState> {
       const session = requireStaffSession();
+      return buildCounterState(session);
+    },
+
+    async startServing(): Promise<CounterState> {
+      const session = requireStaffSession();
+      if (!session.counter) throw new DomainError("shift_not_started");
+
+      const { error } = await sb.rpc("staff_start_serving", {
+        p_staff_id: session.staff.id,
+        p_counter: session.counter,
+      });
+
+      if (error) throw toDomainError(error);
       return buildCounterState(session);
     },
 

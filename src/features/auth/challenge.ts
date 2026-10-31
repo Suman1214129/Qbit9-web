@@ -10,19 +10,42 @@ export interface PendingSignIn {
   next: string | null;
 }
 
-const KEY = "qbit9.pendingSignIn";
+const KEY = "qbit9.pendingSignIn.v2";
 let cache: PendingSignIn | null | undefined;
 const listeners = new Set<() => void>();
 
 const read = (): PendingSignIn | null => {
-  if (cache === undefined) cache = session.read<PendingSignIn | null>(KEY, null);
-  return cache;
+  if (cache === undefined) {
+    if (typeof window !== "undefined") {
+      try {
+        const item = window.sessionStorage.getItem(KEY) || window.localStorage.getItem(KEY);
+        cache = item ? (JSON.parse(item) as PendingSignIn) : null;
+      } catch {
+        cache = null;
+      }
+    } else {
+      cache = null;
+    }
+  }
+  return cache ?? null;
 };
 
 export function setPendingSignIn(v: PendingSignIn | null): void {
   cache = v;
-  if (v) session.write(KEY, v);
-  else session.remove(KEY);
+  if (typeof window !== "undefined") {
+    try {
+      if (v) {
+        const str = JSON.stringify(v);
+        window.sessionStorage.setItem(KEY, str);
+        window.localStorage.setItem(KEY, str);
+      } else {
+        window.sessionStorage.removeItem(KEY);
+        window.localStorage.removeItem(KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }
   listeners.forEach((l) => l());
 }
 

@@ -21,18 +21,24 @@ export function VerifyForm() {
   const verify = useVerifyOtp();
   const resend = useRequestOtp();
   const now = useNow(1000);
+  const [mounted, setMounted] = useState(false);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [wrong, setWrong] = useState(false);
   const submitted = useRef(false);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const destination = safeNext(pending?.next) ?? (draft.branchId ? "/join/service" : "/home");
 
-  // Nothing pending (direct visit or refresh after success): start over from sign in.
+  // If already authenticated, proceed to destination
   useEffect(() => {
-    if (session) router.replace(destination);
-    else if (!pending) router.replace("/sign-in");
-  }, [session, pending, router, destination]);
+    if (mounted && session) {
+      router.replace(destination);
+    }
+  }, [mounted, session, router, destination]);
 
   const submit = useCallback(
     async (value: string) => {
@@ -60,7 +66,23 @@ export function VerifyForm() {
     return () => ac.abort();
   }, [pending]);
 
-  if (!pending) return <FlowShell step={2} title="Verify"><div aria-busy="true" /></FlowShell>;
+  if (!mounted || !pending) {
+    return (
+      <FlowShell step={2} title="Verify" back="/sign-in">
+        {!mounted ? (
+          <div className="flex flex-col gap-4 py-8 items-center justify-center" aria-busy="true">
+            <p className="text-sm text-muted">Checking sign-in...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 text-center py-6">
+            <h2 className="text-[19px] font-semibold">No pending verification</h2>
+            <p className="text-sm text-muted">Please enter your mobile number to sign in.</p>
+            <Button href="/sign-in" className="mt-2">Go to sign in</Button>
+          </div>
+        )}
+      </FlowShell>
+    );
+  }
   const c = pending.challenge;
   const secondsLeft = Math.max(0, c.resendAvailableAt - now);
   const needsName = c.needsName;

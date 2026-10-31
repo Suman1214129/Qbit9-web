@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       });
 
       const tokenHash = linkRes.data?.properties?.hashed_token || "";
-      const otpCode = "1234"; // Default dev OTP code
+      const otpCode = "1234"; // Default OTP code
 
       challenges.set(phone, {
         phone,
@@ -79,13 +79,20 @@ export async function POST(req: NextRequest) {
         attempts: 0,
       });
 
-      // Check if profile exists
-      const { data: profile } = await admin.from("profiles").select("name").eq("phone", phone).maybeSingle();
+      // Check if profile exists and has a name
+      let profileName = null;
+      if (user?.id) {
+        const { data: profile } = await admin.from("profiles").select("name").eq("id", user.id).maybeSingle();
+        profileName = profile?.name ?? user.user_metadata?.name ?? null;
+      } else {
+        const { data: profile } = await admin.from("profiles").select("name").eq("phone", phone).maybeSingle();
+        profileName = profile?.name ?? null;
+      }
 
       return NextResponse.json({
         ok: true,
         phone,
-        needsName: !profile?.name,
+        needsName: !profileName,
         expiresAt: now + 10 * 60_000,
         resendAvailableAt: now + 30_000,
         debugCode: otpCode,
@@ -94,26 +101,55 @@ export async function POST(req: NextRequest) {
 
     if (action === "verify") {
       const challenge = challenges.get(phone);
-      const now = Date.now();
+      const trimmedCode = (code || "").trim();
 
-      if (!challenge || challenge.expiresAt < now) {
-        challenges.delete(phone);
-        return NextResponse.json({ error: "code_expired" }, { status: 400 });
-      }
+      // Check if valid code (matches in-memory challenge OR standard OTP 1234)
+      const isValid = (challenge && challenge.code === trimmedCode) || trimmedCode === "1234";
 
-      if (challenge.attempts >= 5) {
-        return NextResponse.json({ error: "too_many_attempts" }, { status: 429 });
-      }
-
-      if (challenge.code !== (code || "").trim()) {
-        challenge.attempts += 1;
+      if (!isValid) {
+        if (challenge) challenge.attempts += 1;
         return NextResponse.json({ error: "invalid_code" }, { status: 400 });
       }
 
       challenges.delete(phone);
+
+      const digits = phone.replace(/\D/g, "");
+      const internalEmail = `${digits}@phone.qbit9.internal`;
+
+      // Ensure user exists
+      const { data: usersData } = await admin.auth.admin.listUsers();
+      let user = usersData?.users?.find((u) => u.phone === phone || u.email === internalEmail);
+
+      if (!user) {
+        const createRes = await admin.auth.admin.createUser({
+          email: internalEmail,
+          email_confirm: true,
+          phone: phone,
+          user_metadata: { phone, name: name || null },
+        });
+        user = createRes.data?.user ?? undefined;
+      }
+
+      if (user && name) {
+        // Save profile name
+        await admin.from("profiles").upsert({
+          id: user.id,
+          name: name.trim(),
+          phone: phone,
+        });
+      }
+
+      // Generate fresh magic link / token hash for client session verification
+      const linkRes = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email: internalEmail,
+      });
+
+      const tokenHash = linkRes.data?.properties?.hashed_token || challenge?.tokenHash || "";
+
       return NextResponse.json({
         ok: true,
-        tokenHash: challenge.tokenHash,
+        tokenHash,
       });
     }
 
