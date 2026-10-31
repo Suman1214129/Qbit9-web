@@ -1,4 +1,4 @@
-import type { SupabaseClient, User as SupabaseAuthUser } from "@supabase/supabase-js";
+ï»¿import type { SupabaseClient, User as SupabaseAuthUser } from "@supabase/supabase-js";
 import {
   DomainError,
   displayPhone,
@@ -73,7 +73,7 @@ export function createAuthService(client?: SupabaseClient): AuthService {
 
   return {
     async getSession(): Promise<Session | null> {
-      // Use getSession() first — reads from localStorage/cookie, no network round-trip.
+      // Use getSession() first ï¿½ reads from localStorage/cookie, no network round-trip.
       // This prevents AuthGate from flashing to /sign-in during hydration.
       const { data: localSession } = await sb.auth.getSession();
       if (!localSession?.session?.user) return null;
@@ -81,18 +81,17 @@ export function createAuthService(client?: SupabaseClient): AuthService {
       const user = localSession.session.user;
 
       const profile = await getProfile(user.id);
-      if (!profile) return null;
 
-      const createdAt = profile.created_at ? new Date(String(profile.created_at)).getTime() : clock.now();
-      const priorityTags = Array.isArray(profile.priority_tags)
+      const createdAt = profile?.created_at ? new Date(String(profile.created_at)).getTime() : clock.now();
+      const priorityTags = Array.isArray(profile?.priority_tags)
         ? validatePrioritySafe(profile.priority_tags as string[])
         : [];
 
       const domainUser: User = {
         id: user.id,
-        name: (profile.name as string) ?? null,
-        phone: (profile.phone as string) ?? user.phone ?? null,
-        email: (profile.email as string) ?? user.email ?? null,
+        name: (profile?.name as string) ?? (user.user_metadata?.name as string) ?? null,
+        phone: (profile?.phone as string) ?? user.phone ?? null,
+        email: (profile?.email as string) ?? user.email ?? null,
         priority: priorityTags,
         createdAt,
       };

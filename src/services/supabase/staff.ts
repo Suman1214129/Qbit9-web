@@ -76,6 +76,7 @@ export function createStaffService(client?: SupabaseClient): StaffService {
   restoreSession();
 
   const requireStaffSession = (): StaffSessionStorage => {
+    restoreSession();
     const now = clock.now();
     if (!staffSessionCache || staffSessionCache.expiresAt <= now) {
       staffSessionCache = null;
@@ -154,11 +155,22 @@ export function createStaffService(client?: SupabaseClient): StaffService {
 
   const getAllBranchGroupIds = async (branchId: ID): Promise<string[]> => {
     try {
+      // Get all group IDs mapped to any counter in this branch
       const { data } = await sb
-        .from("service_groups")
-        .select("id")
+        .from("counters")
+        .select("counter_groups(group_id)")
         .eq("branch_id", branchId);
-      return (data ?? []).map((g: Record<string, unknown>) => String(g.id));
+      if (!data) return [];
+      const ids = new Set<string>();
+      for (const ctr of data as Record<string, unknown>[]) {
+        const cgs = ctr.counter_groups;
+        if (Array.isArray(cgs)) {
+          for (const g of cgs as Record<string, unknown>[]) {
+            if (g.group_id) ids.add(String(g.group_id));
+          }
+        }
+      }
+      return [...ids];
     } catch {
       return [];
     }

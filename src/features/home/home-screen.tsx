@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Avatar, Badge, Button, EmptyState, Icon, Skeleton, type IconName } from "@/components/ui";
 import { initialOf, tzParts, weekdayShort, formatClock, type BookingView, type TokenView } from "@/domain";
 import { useActiveToken, useBookings, useSession } from "@/hooks/queries";
@@ -21,6 +22,7 @@ function tokenLine(t: TokenView): { big: string; side: string; sideLabel: string
 
 /** Screen 16. Active token first, four plain actions, then what is coming up. */
 export function HomeScreen() {
+  const router = useRouter();
   const { data: session } = useSession();
   const { data: token, isPending: tokenPending } = useActiveToken(true);
   const { data: bookings } = useBookings(true);
@@ -29,6 +31,12 @@ export function HomeScreen() {
   const first = session?.user.name?.split(" ")[0] ?? null;
   const upcoming = (bookings ?? []).filter((b) => b.status === "upcoming" || b.status === "checked_in").filter((b) => b.status === "upcoming");
   const joinHref = branchHref(last ? { bankSlug: last.bankSlug, branchSlug: last.branchSlug } : null);
+
+  useEffect(() => {
+    if (token?.stage === "called" || token?.stage === "serving") {
+      router.replace(`/token/${token.code}`);
+    }
+  }, [token?.stage, token?.code, router]);
 
   return (
     <div className="pb-4">

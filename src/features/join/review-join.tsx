@@ -10,6 +10,7 @@ import {
 } from "@/domain";
 import { useJoinQueue } from "@/hooks/mutations";
 import { useCatalogue } from "@/hooks/queries";
+import { useServices } from "@/providers/services-provider";
 import { cn } from "@/lib/cn";
 import { errorCode, errorMessage } from "@/lib/errors";
 import { formatWaitRange } from "@/lib/format";
@@ -27,6 +28,7 @@ function scale(w: WaitRange, factor: number): WaitRange {
 /** Screen 9. A last look before a token exists. */
 export function ReviewJoin() {
   const router = useRouter();
+  const { queue } = useServices();
   const [joined, setJoined] = useState(false);
   const { ready, draft, session, locationHref } = useJoinGuard({ paused: joined });
   const { data: catalogue } = useCatalogue(draft.branchId);
@@ -64,8 +66,15 @@ export function ReviewJoin() {
       if (code === "location_stale" || code === "location_inaccurate" || code === "location_required") {
         if (locationHref) router.replace(`${locationHref}?reason=stale`);
       } else if (code === "already_in_queue") {
-        const t = (e as { details?: { code?: string } }).details?.code;
-        router.replace(t ? `/token/${t}` : "/home");
+        try {
+          const active = await queue.active();
+          if (active) {
+            clearDraft();
+            router.replace(`/token/${active.code}`);
+            return;
+          }
+        } catch { /* ignore */ }
+        router.replace("/home");
       } else if (code === "not_signed_in") {
         router.replace("/sign-in");
       } else {
