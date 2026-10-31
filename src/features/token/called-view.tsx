@@ -56,7 +56,7 @@ export function CalledView({ token, branch, now }: { token: TokenView; branch: B
               loading={arrived.isPending}
               icon="check"
               onClick={() => arrived.mutate(token.id)}
-              className="h-14 text-base font-semibold shadow-pop lg:shadow-none bg-deep text-white hover:bg-ink"
+              className="h-14 text-base font-semibold bg-deep text-white hover:bg-ink"
             >
               I have reached Counter {token.counter ?? "1"}
             </Button>

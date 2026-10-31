@@ -44,7 +44,7 @@ export function BranchLanding({ bank, slug }: { bank: string; slug: string }) {
 
   return (
     <FlowShell step={0} title={branch.name} branch={{ bankName: branch.bank.name, bankShort: branch.bank.shortName, branchName: branch.name }} hero>
-      <section className="rounded-card bg-surface p-4 shadow-card lg:shadow-none lg:bg-transparent lg:p-0">
+      <section className="rounded-card bg-surface p-4 lg:bg-transparent lg:p-0">
         <div className="flex items-center gap-3">
           <Monogram text={branch.bank.shortName} bankSlug={branch.bank.slug} size={52} className="rounded-[16px]" />
           <div>

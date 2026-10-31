@@ -42,7 +42,7 @@ export function TodayScreen() {
             <StatTile label="Average" value={summary.avgServiceMs == null ? "None" : spokenMs(summary.avgServiceMs)} />
           </div>
 
-          <section aria-label="Served per hour" className="rounded-card bg-surface p-4 shadow-card">
+          <section aria-label="Served per hour" className="rounded-card bg-surface p-4">
             <h2 className="text-sm font-medium">Served per hour</h2>
             <div className="mt-4 flex h-32 items-end gap-2" role="img" aria-label={`Served per hour: ${summary.hourly.map((h) => `${hourLabel(h.hour)} ${h.count}`).join(", ")}`}>
               {summary.hourly.map((h) => (
@@ -57,7 +57,7 @@ export function TodayScreen() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <section aria-label="Closed automatically" className="rounded-card bg-surface p-4 shadow-card">
+          <section aria-label="Closed automatically" className="rounded-card bg-surface p-4">
             <h2 className="text-sm font-medium">Closed as no-show</h2>
             {data.autoClosed.length === 0 ? (
               <p className="mt-1 text-[13px] text-muted">Nobody was closed automatically. If a called customer does not come, they appear here and can be called again.</p>

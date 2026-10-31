@@ -48,8 +48,8 @@ export function Sheet({ open, onClose, title, hideTitle, children, variant = "sh
       className={cn(
         "m-0 max-h-[90dvh] w-full max-w-none overflow-y-auto bg-surface p-0 text-ink backdrop:bg-ink/40 backdrop:animate-fade-in",
         variant === "sheet"
-          ? "fixed inset-x-0 top-auto bottom-0 rounded-t-sheet shadow-sheet animate-sheet-in md:inset-auto md:top-1/2 md:left-1/2 md:max-w-[440px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-sheet"
-          : "fixed top-1/2 left-1/2 max-w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-[22px] bg-white shadow-pop animate-pop-in w-[calc(100%-36px)]",
+          ? "fixed inset-x-0 top-auto bottom-0 rounded-t-sheet border-t border-line-soft animate-sheet-in md:inset-auto md:top-1/2 md:left-1/2 md:max-w-[440px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-sheet md:border md:border-line-soft"
+          : "fixed top-1/2 left-1/2 max-w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-[22px] bg-white border border-line-soft animate-pop-in w-[calc(100%-36px)]",
       )}
     >
       {open ? (

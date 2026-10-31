@@ -70,7 +70,7 @@ export function LocationCheck({ bank, slug }: { bank: string; slug: string }) {
         <>
           <div className="relative h-[196px] overflow-hidden rounded-card">
             <BranchMap branchLabel={label} distanceM={ready.result.distanceM} radiusM={branch.joinRadiusM} />
-            <Chip tone={within ? "ok" : "peach"} icon="pin" className="absolute top-3 left-3 bg-white/90 shadow-ibn">
+            <Chip tone={within ? "ok" : "peach"} icon="pin" className="absolute top-3 left-3 bg-white/90">
               {formatDistance(ready.result.distanceM)} {within ? "from the branch" : "away"}
             </Chip>
           </div>

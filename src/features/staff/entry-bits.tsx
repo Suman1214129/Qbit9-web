@@ -49,7 +49,7 @@ export function Choice({ on, onClick, children, disabled, radio }: { on: boolean
 
 export function StatTile({ label, value, className }: { label: string; value: ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-[18px] bg-surface px-3.5 py-3 shadow-card", className)}>
+    <div className={cn("rounded-[18px] bg-surface px-3.5 py-3", className)}>
       <span className="block text-xs text-muted">{label}</span>
       <b className="mt-1 block text-[26px] leading-none font-medium tracking-[-.8px]">{value}</b>
     </div>

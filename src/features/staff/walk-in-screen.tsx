@@ -110,7 +110,7 @@ function IssuedCard({ result, onAnother }: { result: WalkInResult; onAnother: ()
         <b className="block text-[72px] leading-[1.05] font-medium tracking-[-3px] text-deep">{entry.code}</b>
         <p className="mt-1 text-[16px] text-deep">{entry.serviceName}{entry.name ? `, ${entry.name}` : ""}</p>
       </section>
-      <div className="rounded-[18px] bg-surface p-4 text-[14.5px] shadow-card">
+      <div className="rounded-[18px] bg-surface p-4 text-[14.5px]">
         <b className="block font-medium">{ahead === 0 ? "Nobody ahead" : `${ahead} ${pluralize(ahead, "person", "people")} ahead`}</b>
         <span className="text-muted">Expected wait {formatWaitRange(estWait)}. Tell them to sit down, the counter will call the number.</span>
       </div>

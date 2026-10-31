@@ -11,9 +11,9 @@ const base =
   "inline-flex items-center justify-center gap-2.5 font-medium tracking-[.1px] transition active:scale-[.985] disabled:opacity-50 disabled:active:scale-100 select-none";
 const variants: Record<Variant, string> = {
   primary: "bg-primary text-on-primary hover:bg-primary-strong",
-  outline: "text-primary shadow-[inset_0_0_0_1.5px_var(--color-primary)] hover:bg-primary/5",
+  outline: "text-primary border-[1.5px] border-primary hover:bg-primary/5",
   soft: "bg-rose text-deep hover:bg-rose/80",
-  danger: "text-rust shadow-[inset_0_0_0_1.5px_var(--color-rust)] hover:bg-rust/5",
+  danger: "text-rust border-[1.5px] border-rust hover:bg-rust/5",
   link: "text-muted underline underline-offset-[3px] hover:text-ink",
 };
 const sizes: Record<Size, string> = {
@@ -59,7 +59,7 @@ export function Button({ variant = "primary", size = "md", loading, icon, iconRi
 /** Round white icon button (36px) used for back, expand and kebab. */
 export function IconButton({ icon, label, className, ...rest }: { icon: IconName; label: string } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
   return (
-    <button type="button" aria-label={label} className={cn("flex size-9 items-center justify-center rounded-full bg-white shadow-ibn transition active:scale-95", className)} {...rest}>
+    <button type="button" aria-label={label} className={cn("flex size-9 items-center justify-center rounded-full bg-white transition active:scale-95", className)} {...rest}>
       <Icon name={icon} size={18} />
     </button>
   );

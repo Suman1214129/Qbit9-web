@@ -12,7 +12,7 @@ export function Switch({ checked, onChange, label, disabled, id }: { checked: bo
       onClick={() => onChange(!checked)}
       className={cn("relative h-[25px] w-[42px] shrink-0 rounded-full transition-colors disabled:opacity-50", checked ? "bg-primary-strong" : "bg-ink/20")}
     >
-      <span className={cn("absolute top-[3px] size-[19px] rounded-full bg-white shadow-sm transition-all", checked ? "left-[20px]" : "left-[3px]")} />
+      <span className={cn("absolute top-[3px] size-[19px] rounded-full bg-white border border-line-soft transition-all", checked ? "left-[20px]" : "left-[3px]")} />
     </button>
   );
 }

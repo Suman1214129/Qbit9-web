@@ -55,7 +55,7 @@ export function QueueScreen() {
               <InlineNote icon="info">You have no open shift, so rows cannot be called. <Link href="/staff/start" className="underline">Start your shift</Link></InlineNote>
             ) : null}
             {data.waiting.length === 0 ? (
-              <div className="rounded-card bg-surface p-2 shadow-card"><EmptyState icon="list" title="Nobody is waiting">New customers appear here as they join.</EmptyState></div>
+              <div className="rounded-card bg-surface p-2"><EmptyState icon="list" title="Nobody is waiting">New customers appear here as they join.</EmptyState></div>
             ) : (
               <ul aria-label="Waiting customers">
                 {data.waiting.map((e, i) => {

@@ -75,7 +75,7 @@ export function StartScreen() {
 
       {roster.lastShift ? <LastShift summary={roster.lastShift} tz={tz} /> : null}
 
-      <section aria-labelledby="todays-counter" className="rounded-card bg-surface p-5 shadow-card">
+      <section aria-labelledby="todays-counter" className="rounded-card bg-surface p-5">
         <span id="todays-counter" className="text-[13px] text-muted">Today&apos;s counter</span>
         <h2 className="text-[30px] leading-tight font-medium tracking-[-.8px]">Counter {roster.assigned.number}</h2>
         <div className="mt-3 flex flex-wrap gap-2">

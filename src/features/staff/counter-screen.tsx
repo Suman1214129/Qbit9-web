@@ -153,7 +153,7 @@ function ReadyView({ state, now }: { state: CounterState; now: number }) {
             <div className="mt-3 flex flex-wrap gap-1.5"><EntryPills entry={next} /></div>
           </section>
         ) : (
-          <section className="rounded-card bg-surface p-2 shadow-card">
+          <section className="rounded-card bg-surface p-2">
             <EmptyState icon="ticket" title={blocked ? `${blocked.code} is confirming` : "Nobody is waiting"}>
               {blocked ? `${customerName(blocked)} is checking in that they are still at the branch. They can be called once they confirm.` : "New customers appear here as they join. You do not need to refresh."}
             </EmptyState>
@@ -166,7 +166,7 @@ function ReadyView({ state, now }: { state: CounterState; now: number }) {
             disabled={!next}
             loading={caller.busy}
             onClick={caller.callNext}
-            className="h-14 text-base font-semibold shadow-pop lg:shadow-none"
+            className="h-14 text-base font-semibold"
           >
             {next ? (
               <>
@@ -189,7 +189,7 @@ function ReadyView({ state, now }: { state: CounterState; now: number }) {
 
         {state.held.length ? <HeldList held={state.held} /> : null}
 
-        <section aria-label="Away" className="rounded-card bg-surface p-4 shadow-card">
+        <section aria-label="Away" className="rounded-card bg-surface p-4">
           <h2 className="text-sm font-medium">Stepping away?</h2>
           <p className="mt-0.5 text-[13px] text-muted">Pausing keeps wait estimates honest for customers.</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -292,7 +292,7 @@ function ServingView({ state, now }: { state: CounterState; now: number }) {
                 size="md"
                 loading={caller.busy}
                 onClick={caller.callNextServed}
-                className="h-14 text-base font-semibold shadow-pop lg:shadow-none bg-primary text-white"
+                className="h-14 text-base font-semibold bg-primary text-white"
               >
                 Served & Call Next <span className="ml-1.5 rounded-chip bg-white/20 px-3 py-1 text-sm font-bold tracking-wide">{next.code}{next.priority.length ? " (Priority)" : ""}</span>
               </Button>
@@ -317,7 +317,7 @@ function ServingView({ state, now }: { state: CounterState; now: number }) {
                 size="md"
                 loading={caller.busy}
                 onClick={caller.finishNow}
-                className="h-14 text-base font-semibold shadow-pop lg:shadow-none bg-primary text-white"
+                className="h-14 text-base font-semibold bg-primary text-white"
               >
                 Mark {cur.code} as Served (Complete)
               </Button>
@@ -347,7 +347,7 @@ function ServingView({ state, now }: { state: CounterState; now: number }) {
 
       <div className="flex flex-col gap-4">
         {state.held.length ? (
-          <section aria-label="On hold" className="rounded-card bg-surface p-4 shadow-card">
+          <section aria-label="On hold" className="rounded-card bg-surface p-4">
             <h2 className="text-sm font-medium">On hold</h2>
             <ul className="mt-1">
               {state.held.map((h) => (
@@ -400,7 +400,7 @@ function ActionTile({ icon, label, sub, onClick, disabled }: { icon: "bell" | "a
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex flex-col items-center justify-center gap-1.5 rounded-[18px] bg-surface px-1 py-3.5 text-[13px] shadow-card transition active:scale-[.97] enabled:hover:bg-white disabled:opacity-45"
+      className="flex flex-col items-center justify-center gap-1.5 rounded-[18px] bg-surface px-1 py-3.5 text-[13px] transition active:scale-[.97] enabled:hover:bg-white disabled:opacity-45"
     >
       <Icon name={icon} size={20} className="text-primary-strong" />
       {label}
@@ -437,7 +437,7 @@ function BreakView({ state, now }: { state: CounterState; now: number }) {
         <Choice on={false} radio onClick={() => setEnd(true)}>end shift</Choice>
       </div>
 
-      <div className="flex items-start gap-3 rounded-[18px] bg-surface p-4 shadow-card">
+      <div className="flex items-start gap-3 rounded-[18px] bg-surface p-4">
         <Icon name="clock" size={20} className="mt-0.5 shrink-0 text-primary-strong" />
         <div className="text-[14.5px] leading-snug">
           {info.impactMin > 0 ? (
@@ -468,7 +468,7 @@ function HeldList({ held }: { held: QueueEntry[] }) {
   const resume = useResume();
   const toast = useToast();
   return (
-    <section aria-label="On hold" className="rounded-card bg-surface p-4 shadow-card">
+    <section aria-label="On hold" className="rounded-card bg-surface p-4">
       <h2 className="text-sm font-medium">On hold</h2>
       <ul className="mt-1">
         {held.map((h) => (

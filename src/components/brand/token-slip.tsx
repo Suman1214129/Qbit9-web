@@ -35,7 +35,7 @@ export function TokenSlip({
       <div className="flex items-center justify-between gap-3 text-[12.5px] font-medium">
         <div className="flex min-w-0 items-center gap-2">
           {logo ? (
-            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-0.5 shadow-sm">
+            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-0.5 border border-line-soft">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={logo} alt="" className="size-full object-contain" />
             </span>
