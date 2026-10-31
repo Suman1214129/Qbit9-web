@@ -1,27 +1,18 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button, Chip, EmptyState, Skeleton } from "@/components/ui";
 import { Monogram } from "@/components/ui/avatar";
 import { FlowShell } from "@/components/layout";
-import { useActiveToken, useBranch, useSnapshot } from "@/hooks/queries";
+import { useBranch, useSnapshot } from "@/hooks/queries";
 import { formatWaitShort } from "@/lib/format";
 import { lastBranch } from "@/lib/last-branch";
 import { clearDraft, setDraft } from "./draft";
 
 /** Screen 1. The QR code on the branch wall points here. */
 export function BranchLanding({ bank, slug }: { bank: string; slug: string }) {
-  const router = useRouter();
   const { data: branch, isPending } = useBranch(bank, slug);
   const { data: snap } = useSnapshot(branch?.id);
-  const { data: activeToken } = useActiveToken();
-
-  useEffect(() => {
-    if (activeToken && (activeToken.stage === "waiting" || activeToken.stage === "checkin" || activeToken.stage === "called" || activeToken.stage === "serving")) {
-      router.replace(`/token/${activeToken.code}`);
-    }
-  }, [activeToken, router]);
 
   useEffect(() => {
     if (!branch) return;
